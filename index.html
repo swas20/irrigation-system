@@ -1,147 +1,314 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>IRRIGATION - ONLY ONLINE</title>
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<title>AQUASENSE - Irrigation Master</title>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <style>
-:root{--bg:#070b14;--p:#101828;--c:#121d33;--b:#1e2f52;--a:#00e5b0;--bl:#3b82f6;--r:#ef4444;--g:#22c55e;--t:#e6edf7;--m:#8a9bb5}
-*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--t);font-family:monospace}
-header{padding:12px 16px;background:var(--p);border-bottom:1px solid var(--b);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0}
-.btn{border:0;border-radius:8px;padding:8px 12px;font-weight:800;cursor:pointer;font-family:monospace}.btn-bl{background:var(--bl);color:#fff}.btn-a{background:var(--a);color:#000}.btn-r{background:transparent;color:var(--r);border:1px solid var(--r)}
-input{background:var(--bg);border:1px solid var(--b);color:#fff;padding:10px;border-radius:8px;width:100%}
+:root{--bg:#070b14;--p:#101828;--c:#121d33;--b:#1e2f52;--a:#00e5b0;--bl:#3b82f6;--r:#ef4444;--g:#22c55e;--t:#e6edf7;--m:#8a9bb5;--y:#facc15}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+header{padding:12px 16px;background:var(--p);border-bottom:1px solid var(--b);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;flex-wrap:wrap;gap:10px}
+.btn{border:0;border-radius:8px;padding:9px 14px;font-weight:800;cursor:pointer;font-family:inherit;transition:.15s}
+.btn:hover{opacity:.85;transform:translateY(-1px)}
+.btn-bl{background:var(--bl);color:#fff}.btn-a{background:var(--a);color:#000}.btn-r{background:transparent;color:var(--r);border:1px solid var(--r)}
+input{background:var(--bg);border:1px solid var(--b);color:#fff;padding:11px;border-radius:8px;width:100%;outline:none}
+input:focus{border-color:var(--a)}
 .home{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 20% 30%,#0f1e38,#070b14)}
-.cardBox{background:var(--c);border:2px solid var(--a);border-radius:16px;padding:24px;width:380px;max-width:95vw;text-align:center}
+.cardBox{background:var(--c);border:2px solid var(--a);border-radius:18px;padding:26px;width:400px;max-width:95vw;text-align:center;box-shadow:0 0 40px rgba(0,229,176,.15)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding:12px;max-width:1400px;margin:auto}
-.top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px;max-width:1400px;margin:auto}@media(max-width:800px){.top{grid-template-columns:1fr}}
-.card{background:var(--c);border:1.5px solid var(--g);border-radius:14px;padding:14px;box-shadow:0 0 15px rgba(34,197,94,.15)}
-.badge{padding:3px 8px;border-radius:20px;font-size:.65rem;font-weight:800}.open{background:rgba(0,229,176,.15);color:var(--a);border:1px solid var(--a)}.closed{background:rgba(239,68,68,.15);color:var(--r);border:1px solid var(--r)}
-.row{display:flex;justify-content:space-between;font-size:.75rem;margin:4px 0}
-.sGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.s{background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:8px;text-align:center}.s b{display:block;font-size:1.1rem}
+.top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px;max-width:1400px;margin:auto}
+@media(max-width:800px){.top{grid-template-columns:1fr}}
+.card{background:var(--c);border:1.5px solid var(--b);border-radius:14px;padding:14px;box-shadow:0 0 15px rgba(0,0,0,.3);position:relative}
+.card.online{border-color:var(--g);box-shadow:0 0 15px rgba(34,197,94,.18)}
+.badge{padding:3px 9px;border-radius:20px;font-size:.65rem;font-weight:800}
+.open{background:rgba(0,229,176,.15);color:var(--a);border:1px solid var(--a)}
+.closed{background:rgba(239,68,68,.15);color:var(--r);border:1px solid var(--r)}
+.row{display:flex;justify-content:space-between;font-size:.75rem;margin:5px 0;align-items:center}
+.sGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}
+.s{background:var(--bg);border:1px solid var(--b);border-radius:9px;padding:9px;text-align:center}
+.s b{display:block;font-size:1.15rem;margin-top:2px}
 #dash{display:none}
-.empty{grid-column:1/-1;text-align:center;padding:50px;color:var(--m);border:1px dashed var(--b);border-radius:14px}
+.empty{grid-column:1/-1;text-align:center;padding:50px;color:var(--m);border:1px dashed var(--b);border-radius:14px;line-height:1.6}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;animation:pulse 1.5s infinite}
+@keyframes pulse{0%{opacity:1}50%{opacity:.3}100%{opacity:1}}
 </style>
 </head>
 <body>
 
-<div id=home class=home>
-  <div class=cardBox>
-    <h2 style="color:var(--a)">IRRIGATION</h2>
-    <div style="font-size:.6rem;color:var(--m);margin:8px 0">admin/1234 = ALL ONLINE<br>ID/PIN = OWN ONLINE ONLY</div>
-    <input id=uid placeholder="ID - admin or 1" style="margin-top:12px">
-    <input id=pwd type=password placeholder="PIN - 1234" style="margin-top:8px">
-    <button class="btn btn-a" style="width:100%;margin-top:10px" onclick="login()">LOGIN</button>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px">
-      <input id=ip placeholder="Master IP" style="font-size:.7rem">
-      <input id=topic value="aquasense/moses_kaaga_9x7p2" style="font-size:.7rem">
+<div id="home" class="home">
+  <div class="cardBox">
+    <h2 style="color:var(--a);letter-spacing:2px">AQUASENSE</h2>
+    <div style="font-size:.65rem;color:var(--m);margin:10px 0;line-height:1.4">
+      Irrigation Master - Live Dashboard<br>
+      <span style="color:var(--g)">● ONLINE ONLY MODE</span><br>
+      admin / 1234 = VIEW ALL<br>
+      ID / PIN = OWN NODE
     </div>
-    <button class="btn" style="width:100%;margin-top:8px;background:var(--y);color:#000" onclick="reg()">REGISTER</button>
-    <div id=msg style="color:var(--r);font-size:.7rem;margin-top:8px"></div>
+    <input id="uid" placeholder="ID - e.g. admin or 1" autocomplete="username">
+    <input id="pwd" type="password" placeholder="PIN - 1234" style="margin-top:8px" autocomplete="current-password">
+    <button class="btn btn-a" style="width:100%;margin-top:12px" onclick="login()">LOGIN</button>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px">
+      <input id="ip" placeholder="Master IP (optional)" style="font-size:.7rem" title="Optional - for local network HTTP. GitHub Pages uses MQTT only">
+      <input id="topic" value="aquasense/moses_kaaga_9x7p2" style="font-size:.7rem">
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn" style="flex:1;background:var(--p);color:var(--m);border:1px solid var(--b)" onclick="reg()">+ REGISTER</button>
+      <button class="btn btn-bl" style="flex:1" onclick="connectMQTTOnly()">CONNECT MQTT</button>
+    </div>
+    <div id="msg" style="color:var(--r);font-size:.7rem;margin-top:10px;min-height:14px"></div>
+    <div id="connStatus" style="font-size:.65rem;color:var(--m);margin-top:8px">MQTT: Disconnected</div>
   </div>
 </div>
 
-<div id=dash>
+<div id="dash">
 <header>
-  <div><b id=title style="color:var(--a)">DASHBOARD</b> <span id=live style="font-size:.7rem;color:var(--m);margin-left:10px"></span></div>
-  <div style="display:flex;gap:6px"><button class="btn btn-bl" onclick="connect()">CONNECT</button><button class="btn btn-r" onclick="logout()">LOGOUT</button></div>
+  <div>
+    <b id="title" style="color:var(--a)">DASHBOARD</b>
+    <span id="live" style="font-size:.7rem;color:var(--m);margin-left:10px"></span>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <span id="mqttDot" style="font-size:.7rem"><span class="dot" style="background:var(--r)"></span> MQTT</span>
+    <button class="btn btn-bl" onclick="connectMQTTOnly()">RECONNECT</button>
+    <button class="btn btn-r" onclick="logout()">LOGOUT</button>
+  </div>
 </header>
-<div id=top class=top></div>
-<div id=grid class=grid></div>
+<div id="top" class="top"></div>
+<div id="grid" class="grid"></div>
 </div>
 
 <script>
-let $=s=>document.getElementById(s);
-let S={nodes:[],base:'',cli:null,role:null,cur:null,ip:'',last:0,timer:null};
-let REG=JSON.parse(localStorage.getItem('REG_ONLINE_ONLY')||'[]');
-if(REG.length==0){REG=[{id:'1',name:'Customer 1',pin:'1234'},{id:'2',name:'Customer 2',pin:'2345'},{id:'3',name:'Customer 3',pin:'3456'},{id:'4',name:'Customer 4',pin:'4567'}]; localStorage.setItem('REG_ONLINE_ONLY',JSON.stringify(REG));}
-function save(){localStorage.setItem('REG_ONLINE_ONLY',JSON.stringify(REG));}
-function online(id){let n=S.nodes.find(x=>x.id==String(id)); return n && Date.now()-n.last<65000;}
-function get(id){return S.nodes.find(x=>x.id==String(id));}
+const $ = s => document.getElementById(s);
+let S = { nodes: [], base: '', cli: null, role: null, cur: null, ip: '', last: 0, httpTimer: null, renderTimer: null };
 
-function merge(d){
-  if(!d||!d.nodes) return;
+let REG = JSON.parse(localStorage.getItem('REG_ONLINE_ONLY')||'[]');
+if(REG.length==0){
+  REG=[{id:'1',name:'Customer 1',pin:'1234'},{id:'2',name:'Customer 2',pin:'2345'},{id:'3',name:'Customer 3',pin:'4567'},{id:'4',name:'Customer 4',pin:'4567'}];
+  localStorage.setItem('REG_ONLINE_ONLY',JSON.stringify(REG));
+}
+function saveReg(){localStorage.setItem('REG_ONLINE_ONLY',JSON.stringify(REG));}
+
+// Node is online if we saw it < 35 sec ago (Master timeout is 20s)
+function isOnline(id){
+  let n = S.nodes.find(x=>x.id==String(id));
+  if(!n) return false;
+  return (Date.now() - n._ms) < 35000;
+}
+function getNode(id){ return S.nodes.find(x=>x.id==String(id)); }
+
+// MERGE - compatible with your Master JSON
+function mergePayload(d){
+  if(!d ||!d.nodes ||!Array.isArray(d.nodes)) return;
   d.nodes.filter(n=>String(n.id)!='0').forEach(o=>{
-    let id=String(o.id);
-    let i=S.nodes.findIndex(x=>x.id==id);
-    let obj={id:id,flow:Number(o.flow||0),total:Number(o.total||0),m1:Number(o.moist1||o.m1||0),m2:Number(o.moist2||o.m2||0),t:Number(o.temp||0),h:Number(o.hum||0),valve:o.valve||'UNKNOWN',rssi:Number(o.rssi||0),last:Date.now()};
-    if(i>=0) S.nodes[i]={...S.nodes[i],...obj}; else S.nodes.push(obj);
-    if(!REG.find(r=>r.id==id)){REG.push({id:id,name:'Customer '+id,pin:'1234'}); save();}
+    let id = String(o.id).trim();
+    let obj = {
+      id: id,
+      flow: Number(o.flow||0),
+      total: Number(o.total||0),
+      m1: Number(o.m1?? o.moist1?? 0),
+      m2: Number(o.m2?? o.moist2?? 0),
+      t: Number(o.temp||0),
+      h: Number(o.hum||0),
+      valve: (o.valve||'UNKNOWN').toUpperCase(),
+      rssi: Number(o.rssi||0),
+      online: o.online!==undefined?!!o.online : true,
+      _ms: Date.now()
+    };
+    let idx = S.nodes.findIndex(x=>x.id==id);
+    if(idx>=0) S.nodes[idx] = {...S.nodes[idx],...obj};
+    else S.nodes.push(obj);
+
+    if(!REG.find(r=>r.id==id)){ REG.push({id:id,name:'Customer '+id,pin:'1234'}); saveReg(); }
   });
-  S.last=Date.now();
+  S.last = Date.now();
 }
 
-function render(){
-  // ONLY ONLINE NODES
-  let onlineNodes = S.nodes.filter(n=>online(n.id));
-  let tot=onlineNodes.reduce((a,b)=>a+b.total,0);
-  $('live').textContent=`${onlineNodes.length} ONLINE | ${tot.toFixed(1)}L TOTAL | ${S.last?new Date(S.last).toLocaleTimeString():''}`;
-
-  if(S.role=='admin'){
-    $('title').textContent=`ADMIN - ONLINE ONLY`;
-    $('top').innerHTML=`<div class=card><div style="font-size:.6rem;color:var(--m)">ONLINE NOW</div><div style="font-size:1.8rem;font-weight:800;color:var(--g)">${onlineNodes.length}</div></div><div class=card><div style="font-size:.6rem;color:var(--m)">WATER USED</div><div style="font-size:1.8rem;font-weight:800;color:var(--a)">${tot.toFixed(1)}L</div></div><div class=card><div style="font-size:.6rem;color:var(--m)">TOTAL FLOW</div><div style="font-size:1.8rem;font-weight:800">${onlineNodes.reduce((a,b)=>a+b.flow,0).toFixed(2)} L/min</div></div>`;
-    
-    if(onlineNodes.length==0){
-      $('grid').innerHTML=`<div class=empty>⏳ NO ONLINE NODES<br><span style="font-size:.7rem">Waiting for Master LoRa to upload Customer 1,2,3,4...<br>Packet format: ID:m1,m2,t,h,flow/total e.g. 1:30,35,28.5,65,2.3/120</span></div>`;
-    } else {
-      $('grid').innerHTML=onlineNodes.sort((a,b)=>Number(a.id)-Number(b.id)).map(n=>{
-        let r=REG.find(x=>x.id==n.id)||{name:'Customer '+n.id};
-        return card(n,r);
-      }).join('');
-    }
-  } else {
-    // CUSTOMER - only if ONLINE
-    let r=REG.find(x=>x.id==S.cur);
-    let n=get(S.cur);
-    $('title').textContent=`C${S.cur}`;
-    if(!n || !online(S.cur)){
-      $('top').innerHTML=`<div class=card style="grid-column:1/-1;text-align:center;padding:30px;border:1px dashed var(--y)"><div style="font-size:1.2rem;color:var(--y)">OFFLINE - WAIT UPLOAD</div><div style="font-size:.7rem;color:var(--m);margin-top:8px">Customer ID ${S.cur} is not ONLINE yet.<br>Master must receive LoRa for ID ${S.cur} to go ONLINE.</div></div>`;
-      $('grid').innerHTML=`<div class=empty>Your node ID ${S.cur} is OFFLINE<br>Only ONLINE nodes appear. Wait for Master LoRa upload.</div>`;
-      return;
-    }
-    $('top').innerHTML=`<div class="card" style="border:2px solid var(--a)"><div style="text-align:center"><div style="font-size:.7rem;color:var(--m)">WATER USED - ONLINE</div><div style="font-size:2.8rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.7rem">${(n.total/1000).toFixed(3)} M³ | ${n.flow.toFixed(2)} L/min</div></div><div class=sGrid><div class=s><span style="font-size:.55rem">M1</span><b>${n.m1}%</b></div><div class=s><span style="font-size:.55rem">M2</span><b>${n.m2}%</b></div><div class=s><span style="font-size:.55rem">TEMP</span><b>${n.t}°C</b></div><div class=s><span style="font-size:.55rem">HUM</span><b>${n.h}%</b></div></div><div class=row><span>VALVE</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE</button></div></div>`;
-    $('grid').innerHTML=card(n,r);
-  }
-}
-
-function card(n,r){
-  return `<div class="card">
-    <div class=row><b>C${n.id} - ${r?r.name:''}</b><span style="font-size:.6rem;color:var(--g)">● ONLINE</span></div>
-    <div style="text-align:center;margin:6px 0"><div style="font-size:2rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.65rem">${n.flow.toFixed(2)} L/min WATER USED</div></div>
-    <div class=sGrid>
-      <div class=s><span style="font-size:.55rem">MOIST 1</span><b>${n.m1}%</b></div>
-      <div class=s><span style="font-size:.55rem">MOIST 2</span><b>${n.m2}%</b></div>
-      <div class=s><span style="font-size:.55rem">DHT22 T</span><b>${n.t}°C</b></div>
-      <div class=s><span style="font-size:.55rem">DHT22 H</span><b>${n.h}%</b></div>
+function cardHTML(n){
+  let r = REG.find(x=>x.id==n.id) || {name:'Customer '+n.id};
+  let valveClass = n.valve.includes('OPEN')? 'open' : 'closed';
+  return `<div class="card online">
+    <div class="row"><b>C${n.id} - ${r.name}</b><span style="font-size:.6rem;color:var(--g)"><span class="dot" style="background:var(--g)"></span> ONLINE • ${n.rssi}dBm</span></div>
+    <div style="text-align:center;margin:10px 0">
+      <div style="font-size:2.2rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div>
+      <div style="font-size:.7rem;color:var(--m)">${n.flow.toFixed(2)} L/min • ${(n.total/1000).toFixed(3)} m³ TOTAL</div>
     </div>
-    <div class=row><span>VALVE</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div>
-    <div class=row><span>FLOW</span><b>${n.flow.toFixed(2)} L/min</b></div>
-    <div class=row><span>RSSI</span><b>${n.rssi}dBm</b></div>
-    <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN VALVE</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE VALVE</button></div>
+    <div class="sGrid">
+      <div class="s"><span style="font-size:.55rem;color:var(--m)">MOIST 1</span><b>${n.m1.toFixed(0)}%</b></div>
+      <div class="s"><span style="font-size:.55rem;color:var(--m)">MOIST 2</span><b>${n.m2.toFixed(0)}%</b></div>
+      <div class="s"><span style="font-size:.55rem;color:var(--m)">TEMP</span><b>${n.t.toFixed(1)}°C</b></div>
+      <div class="s"><span style="font-size:.55rem;color:var(--m)">HUM</span><b>${n.h.toFixed(0)}%</b></div>
+    </div>
+    <div class="row"><span>VALVE</span><b class="badge ${valveClass}">${n.valve}</b></div>
+    <div class="row"><span>FLOW</span><b>${n.flow.toFixed(2)} L/min</b></div>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="btn btn-a" style="flex:1" onclick="sendCmd('${n.id}','open')">OPEN VALVE</button>
+      <button class="btn btn-r" style="flex:1" onclick="sendCmd('${n.id}','close')">CLOSE VALVE</button>
+    </div>
   </div>`;
 }
 
-function cmd(id,a){let p=JSON.stringify({node:String(id),action:a}); if(S.cli&&S.cli.connected) S.cli.publish(S.base+'/cmd',p); if(S.ip) fetch(`http://${S.ip}/valve?node=${id}&action=${a}`,{mode:'no-cors'}).catch(()=>{});}
+function render(){
+  let onlineNodes = S.nodes.filter(n=>isOnline(n.id));
+  let totalWater = onlineNodes.reduce((a,b)=>a+b.total,0);
+  let totalFlow = onlineNodes.reduce((a,b)=>a+b.flow,0);
 
-function connect(){
-  S.base=$('topic').value.trim(); S.ip=$('ip').value.trim().replace(/\/$/,'');
-  localStorage.setItem('B',S.base); localStorage.setItem('IP',S.ip);
-  if(S.timer) clearInterval(S.timer);
-  if(S.ip){let f=()=>{fetch(`${S.ip}/data`,{cache:'no-store'}).then(r=>r.json()).then(d=>{merge(d); render();}).catch(()=>{});}; f(); S.timer=setInterval(f,2000);}
-  try{if(S.cli) S.cli.end(); S.cli=mqtt.connect('wss://broker.hivemq.com:8884/mqtt',{clientId:'on_'+Math.random().toString(16).slice(2)}); S.cli.on('connect',()=>{S.cli.subscribe(S.base+'/live');}); S.cli.on('message',(t,m)=>{try{merge(JSON.parse(m.toString())); render();}catch(e){}});}catch(e){}
+  $('live').textContent = `${onlineNodes.length} ONLINE | ${totalWater.toFixed(1)}L TOTAL | Last: ${S.last?new Date(S.last).toLocaleTimeString():''}`;
+
+  if(S.role==='admin'){
+    $('title').textContent = `ADMIN - ONLINE ONLY (${onlineNodes.length})`;
+    $('top').innerHTML = `
+      <div class="card online"><div style="font-size:.6rem;color:var(--m)">ONLINE NOW</div><div style="font-size:2rem;font-weight:900;color:var(--g)">${onlineNodes.length}</div></div>
+      <div class="card"><div style="font-size:.6rem;color:var(--m)">WATER USED</div><div style="font-size:2rem;font-weight:900;color:var(--a)">${totalWater.toFixed(1)}L</div></div>
+      <div class="card"><div style="font-size:.6rem;color:var(--m)">TOTAL FLOW</div><div style="font-size:2rem;font-weight:900">${totalFlow.toFixed(2)} L/min</div></div>`;
+
+    if(onlineNodes.length===0){
+      $('grid').innerHTML = `<div class="empty">⏳ NO ONLINE NODES YET<br><span style="font-size:.75rem">Waiting for LoRa data from Master<br>Master must publish to <b>${S.base}/live</b><br>Packet format: <code>1:12.5/250/45/50/60/25</code></span></div>`;
+    } else {
+      $('grid').innerHTML = onlineNodes.sort((a,b)=>Number(a.id)-Number(b.id)).map(n=>cardHTML(n)).join('');
+    }
+  } else {
+    // CUSTOMER view
+    let n = getNode(S.cur);
+    $('title').textContent = `CUSTOMER C${S.cur}`;
+    if(!n ||!isOnline(S.cur)){
+      $('top').innerHTML = `<div class="card" style="grid-column:1/-1;text-align:center;padding:30px;border:1.5px dashed var(--y)"><div style="font-size:1.2rem;color:var(--y)">NODE ${S.cur} OFFLINE</div><div style="font-size:.7rem;color:var(--m);margin-top:8px">Waiting for Master to receive LoRa packet for ID ${S.cur}</div></div>`;
+      $('grid').innerHTML = `<div class="empty">Your node C${S.cur} is OFFLINE<br>Only ONLINE nodes are shown.</div>`;
+      return;
+    }
+    $('top').innerHTML = `<div class="card online" style="border:2px solid var(--a);grid-column:1/-1;max-width:500px;margin:auto">
+      <div style="text-align:center"><div style="font-size:.7rem;color:var(--m)">WATER USED - ONLINE</div><div style="font-size:3rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.75rem">${(n.total/1000).toFixed(3)} M³ | ${n.flow.toFixed(2)} L/min</div></div>
+      <div class="sGrid"><div class="s"><span style="font-size:.55rem">M1</span><b>${n.m1}%</b></div><div class="s"><span style="font-size:.55rem">M2</span><b>${n.m2}%</b></div><div class="s"><span style="font-size:.55rem">TEMP</span><b>${n.t}°C</b></div><div class="s"><span style="font-size:.55rem">HUM</span><b>${n.h}%</b></div></div>
+      <div class="row"><span>VALVE</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-a" style="flex:1" onclick="sendCmd('${n.id}','open')">OPEN</button><button class="btn btn-r" style="flex:1" onclick="sendCmd('${n.id}','close')">CLOSE</button></div>
+    </div>`;
+    $('grid').innerHTML = cardHTML(n);
+  }
+}
+
+function sendCmd(id, action){
+  let payload = JSON.stringify({node:String(id), action:action});
+  // 1. MQTT
+  if(S.cli && S.cli.connected){
+    S.cli.publish(S.base + '/cmd', payload);
+    console.log('MQTT CMD:', payload);
+  } else {
+    alert('MQTT not connected! Click CONNECT');
+  }
+  // 2. HTTP if IP provided (only works on local network, not GitHub https)
+  if(S.ip){
+    let url = S.ip.startsWith('http')? S.ip : `http://${S.ip}`;
+    fetch(`${url}/valve?node=${id}&action=${action}`).then(r=>r.json()).then(j=>console.log('HTTP CMD OK',j)).catch(()=>{});
+  }
+  // Optimistic UI
+  let n = getNode(id);
+  if(n){ n.valve = action.toUpperCase(); render(); }
+}
+
+function connectMQTTOnly(){
+  S.base = $('topic').value.trim() || 'aquasense/moses_kaaga_9x7p2';
+  S.ip = $('ip').value.trim().replace(/\/$/,'');
+  localStorage.setItem('AQUA_BASE', S.base);
+  localStorage.setItem('AQUA_IP', S.ip);
+
+  // Stop old timers
+  if(S.httpTimer) clearInterval(S.httpTimer);
+
+  // HTTP polling - only if user gave IP AND we are NOT on https github
+  if(S.ip && location.protocol!== 'https:'){
+    let url = S.ip.startsWith('http')? S.ip : `http://${S.ip}`;
+    let poll = () => fetch(`${url}/data`,{cache:'no-store'}).then(r=>r.json()).then(d=>{mergePayload(d); render();}).catch(e=>console.log('HTTP poll fail',e));
+    poll();
+    S.httpTimer = setInterval(poll, 2000);
+  }
+
+  // MQTT over WSS - Works on GitHub Pages
+  try{
+    if(S.cli) { try{S.cli.end();}catch(e){} }
+    $('connStatus').textContent = 'MQTT: Connecting...';
+    $('mqttDot').innerHTML = `<span class="dot" style="background:var(--y)"></span> Connecting...`;
+
+    S.cli = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+      clientId: 'aqua_web_' + Math.random().toString(16).slice(2,10),
+      keepalive: 30,
+      clean: true,
+      reconnectPeriod: 3000
+    });
+
+    S.cli.on('connect', ()=>{
+      $('connStatus').textContent = 'MQTT: Connected';
+      $('connStatus').style.color = 'var(--g)';
+      $('mqttDot').innerHTML = `<span class="dot" style="background:var(--g)"></span> ONLINE`;
+      S.cli.subscribe(S.base + '/live', (err)=>{
+        if(err) console.error('SUB ERR',err);
+        else console.log('SUBSCRIBED', S.base+'/live');
+      });
+    });
+
+    S.cli.on('message', (topic, msg)=>{
+      if(topic === S.base + '/live'){
+        try{ let data = JSON.parse(msg.toString()); mergePayload(data); render(); }catch(e){ console.error('JSON parse',e); }
+      }
+    });
+
+    S.cli.on('error', (e)=>{ $('connStatus').textContent = 'MQTT Error: '+e.message; });
+    S.cli.on('close', ()=>{ $('mqttDot').innerHTML = `<span class="dot" style="background:var(--r)"></span> OFFLINE`; });
+
+  }catch(e){ console.error(e); $('connStatus').textContent = 'MQTT Fail: '+e.message; }
 }
 
 function login(){
-  let u=$('uid').value.trim().toLowerCase(), p=$('pwd').value.trim();
-  S.base=$('topic').value.trim(); S.ip=$('ip').value.trim();
-  $('msg').textContent='';
-  if(u=='admin'&&p=='1234'){S.role='admin'; $('home').style.display='none'; $('dash').style.display='block'; render(); connect(); setInterval(()=>{if(S.role) render();},3000); return;}
-  let f=REG.find(x=>x.id==u&&x.pin==p); if(f){S.role='customer'; S.cur=u; $('home').style.display='none'; $('dash').style.display='block'; render(); connect(); setInterval(()=>{if(S.role) render();},3000); return;}
-  $('msg').textContent='Wrong. admin/1234 or ID/PIN';
+  let u = $('uid').value.trim().toLowerCase();
+  let p = $('pwd').value.trim();
+  S.base = $('topic').value.trim() || 'aquasense/moses_kaaga_9x7p2';
+  S.ip = $('ip').value.trim();
+  $('msg').textContent = '';
+
+  if(u==='admin' && p==='1234'){
+    S.role='admin';
+    $('home').style.display='none'; $('dash').style.display='block';
+    connectMQTTOnly();
+    if(S.renderTimer) clearInterval(S.renderTimer);
+    S.renderTimer = setInterval(render, 3000);
+    render();
+    return;
+  }
+  let found = REG.find(x=>x.id===u && x.pin===p);
+  if(found){
+    S.role='customer'; S.cur=u;
+    $('home').style.display='none'; $('dash').style.display='block';
+    connectMQTTOnly();
+    if(S.renderTimer) clearInterval(S.renderTimer);
+    S.renderTimer = setInterval(render, 3000);
+    render();
+    return;
+  }
+  $('msg').textContent = 'Wrong credentials. Try admin/1234 or 1/1234';
 }
-function reg(){let id=prompt("ID e.g. 1"); if(!id) return; let name=prompt("Name","Customer "+id); let pin=prompt("PIN","1234"); if(name&&pin){REG.push({id:String(id),name,pin}); save();}}
-function logout(){ $('dash').style.display='none'; $('home').style.display='flex'; S.role=null; if(S.timer) clearInterval(S.timer); if(S.cli) S.cli.end(); S.nodes=[];}
-(function(){ $('topic').value=localStorage.getItem('B')||'aquasense/moses_kaaga_9x7p2'; $('ip').value=localStorage.getItem('IP')||'';})();
+
+function reg(){
+  let id = prompt("Enter Node ID e.g. 1");
+  if(!id) return;
+  let name = prompt("Customer Name","Customer "+id);
+  let pin = prompt("Set PIN","1234");
+  if(name && pin){ REG.push({id:String(id).trim(), name, pin}); saveReg(); alert('Registered C'+id); }
+}
+function logout(){
+  $('dash').style.display='none'; $('home').style.display='flex';
+  S.role=null; S.nodes=[];
+  if(S.httpTimer) clearInterval(S.httpTimer);
+  if(S.renderTimer) clearInterval(S.renderTimer);
+  if(S.cli) { try{S.cli.end();}catch(e){} }
+  $('live').textContent='';
+  $('grid').innerHTML='';
+}
+
+// Restore saved values
+(function(){
+  $('topic').value = localStorage.getItem('AQUA_BASE') || 'aquasense/moses_kaaga_9x7p2';
+  $('ip').value = localStorage.getItem('AQUA_IP') || '';
+})();
 </script>
 </body>
 </html>
