@@ -1,204 +1,136 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AQUASENSE IRRIGATION - CUSTOMERS ONLY - WATER USED</title>
+<title>IRRIGATION CONTROL</title>
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <style>
 :root{--bg:#070b14;--p:#101828;--c:#121d33;--b:#1e2f52;--a:#00e5b0;--bl:#3b82f6;--r:#ef4444;--y:#f59e0b;--g:#22c55e;--t:#e6edf7;--m:#8a9bb5}
 *{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--t);font-family:monospace}
-header{padding:12px 16px;background:var(--p);border-bottom:1px solid var(--b);display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;position:sticky;top:0;z-index:10}
-.logo{color:var(--a);font-weight:900;letter-spacing:2px}
-.dot{width:9px;height:9px;border-radius:50%;display:inline-block}.online{background:var(--g);box-shadow:0 0 8px var(--g)}.offline{background:#555}
-.badge{padding:4px 10px;border-radius:20px;font-size:.65rem;font-weight:800}.open{background:rgba(0,229,176,.15);color:var(--a);border:1px solid var(--a)}.closed{background:rgba(239,68,68,.15);color:var(--r);border:1px solid var(--r)}.onl{background:rgba(34,197,94,.2);color:var(--g);border:1px solid var(--g)}.offl{background:rgba(100,100,100,.2);color:#aaa;border:1px solid #666}
-.btn{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;font-family:monospace}.btn-bl{background:var(--bl);color:#fff}.btn-a{background:var(--a);color:#000}.btn-r{background:transparent;color:var(--r);border:1px solid var(--r)}.btn-y{background:var(--y);color:#000}
+header{padding:12px 16px;background:var(--p);border-bottom:1px solid var(--b);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0}
+.btn{border:0;border-radius:8px;padding:8px 12px;font-weight:800;cursor:pointer;font-family:monospace}.btn-bl{background:var(--bl);color:#fff}.btn-a{background:var(--a);color:#000}.btn-r{background:transparent;color:var(--r);border:1px solid var(--r)}
 input{background:var(--bg);border:1px solid var(--b);color:#fff;padding:10px;border-radius:8px;width:100%}
-.home{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 20% 30%,#0f1e38,#070b14)}
-.cardBox{background:var(--c);border:2px solid var(--a);border-radius:16px;padding:26px;width:420px;max-width:95vw;text-align:center;box-shadow:0 0 40px rgba(0,229,176,.25)}
-.top{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:12px;max-width:1400px;margin:auto}@media(max-width:900px){.top{grid-template-columns:1fr}}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px;padding:12px;max-width:1400px;margin:auto}
-.card{background:var(--c);border:1px solid var(--b);border-radius:14px;padding:14px}.zone{border:1.5px solid var(--b)}.zone.online{border-color:var(--g);box-shadow:0 0 20px rgba(34,197,94,.2)}.zone.offline{border-color:#444;opacity:0.8}
-.row{display:flex;justify-content:space-between;font-size:.75rem;margin:5px 0}.flow{font-size:2.4rem;font-weight:900;text-align:center;margin:8px 0;color:var(--a)}
-.sensorGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.sensor{background:var(--bg);border:1px solid var(--b);border-radius:10px;padding:10px;text-align:center}.sensor b{font-size:1.2rem;display:block}
-.sum{background:linear-gradient(180deg,var(--c),var(--p));border:1px solid var(--b);border-radius:12px;padding:14px;text-align:center}.sum-l{font-size:.6rem;color:var(--m)}.sum-v{font-size:1.6rem;font-weight:800;margin-top:4px}
+.home{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 20% 30%,#0f1e38,#070b14)}
+.cardBox{background:var(--c);border:2px solid var(--a);border-radius:16px;padding:24px;width:380px;max-width:95vw;text-align:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding:12px;max-width:1400px;margin:auto}
+.top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px;max-width:1400px;margin:auto}@media(max-width:800px){.top{grid-template-columns:1fr}}
+.card{background:var(--c);border:1px solid var(--b);border-radius:14px;padding:14px}.on{border-color:var(--g)}.off{border-color:#444;opacity:.8}
+.badge{padding:3px 8px;border-radius:20px;font-size:.65rem;font-weight:800}.open{background:rgba(0,229,176,.15);color:var(--a);border:1px solid var(--a)}.closed{background:rgba(239,68,68,.15);color:var(--r);border:1px solid var(--r)}
+.row{display:flex;justify-content:space-between;font-size:.75rem;margin:4px 0}
+.sGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.s{background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:8px;text-align:center}.s b{display:block;font-size:1.1rem}
 #dash{display:none}
 </style>
 </head>
 <body>
 
 <div id=home class=home>
-  <div style="background:var(--p);border:2px solid var(--a);border-radius:16px;padding:18px 28px;margin-bottom:20px;text-align:center;max-width:900px;width:100%"><h1 style="color:var(--a);letter-spacing:2px">AQUASENSE IRRIGATION - CUSTOMERS ONLY</h1><div style="font-size:.65rem;color:var(--m);margin-top:6px">Only Customer 1,2,3,4... | Amount of Water Used | ONLINE once Uploaded | REAL MASTER LORA</div></div>
   <div class=cardBox>
-    <h3 style="color:var(--a)">🔐 SINGLE LOGIN</h3>
-    <p style="font-size:.6rem;color:var(--m);margin:8px 0">Admin: <b>admin / 1234</b> → ALL Customers<br>Customer: <b>ID / PIN</b> e.g. 1/1234 → OWN ONLY</p>
-    <input id=uid placeholder="Username or Customer ID - admin or 1,2,3..." style="margin-bottom:10px">
-    <div style="display:flex;gap:6px;margin-bottom:10px"><input id=pwd type=password placeholder="Password / PIN - 1234" style="flex:1"><button onclick="let e=$('pwd');e.type=e.type=='password'?'text':'password'" style="background:var(--c);border:1px solid var(--b);border-radius:8px;padding:8px">👁</button></div>
-    <button class="btn btn-a" style="width:100%" onclick="doSingleLogin()">LOGIN</button>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><input id=cfgIp placeholder="Master IP 192.168.1.100" style="font-size:.7rem"><input id=cfgTopic value="aquasense/moses_kaaga_9x7p2" style="font-size:.7rem"></div>
-    <button class="btn btn-y" style="width:100%;margin-top:10px" onclick="showReg()">REGISTER NEW CUSTOMER</button>
-    <div id=msg style="color:var(--r);font-size:.7rem;margin-top:10px;min-height:18px"></div>
+    <h2 style="color:var(--a)">IRRIGATION</h2>
+    <div style="font-size:.6rem;color:var(--m);margin:8px 0">admin/1234 = ALL<br>1/1234 = OWN</div>
+    <input id=uid placeholder="ID - admin or 1" style="margin-top:12px">
+    <input id=pwd type=password placeholder="PIN - 1234" style="margin-top:8px">
+    <button class="btn btn-a" style="width:100%;margin-top:10px" onclick="login()">LOGIN</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px">
+      <input id=ip placeholder="Master IP" style="font-size:.7rem">
+      <input id=topic value="aquasense/moses_kaaga_9x7p2" style="font-size:.7rem">
+    </div>
+    <button class="btn" style="width:100%;margin-top:8px;background:var(--y);color:#000" onclick="reg()">REGISTER</button>
+    <div id=msg style="color:var(--r);font-size:.7rem;margin-top:8px"></div>
   </div>
 </div>
 
 <div id=dash>
-<header><div style="display:flex;gap:12px;align-items:center"><div class=logo id=dashTitle>IRRIGATION - CUSTOMERS ONLY</div><span id=live style="font-size:.7rem;color:var(--y)"></span></div><div style="display:flex;gap:6px"><button class="btn btn-bl" style="padding:6px 10px" onclick="connectAll()">CONNECT MASTER</button><button class="btn btn-r" style="padding:6px 10px" onclick="logout()">LOGOUT</button></div></header>
+<header>
+  <div><b id=title style="color:var(--a)">DASHBOARD</b> <span id=live style="font-size:.7rem;color:var(--m);margin-left:10px"></span></div>
+  <div style="display:flex;gap:6px"><button class="btn btn-bl" onclick="connect()">CONNECT</button><button class="btn btn-r" onclick="logout()">LOGOUT</button></div>
+</header>
 <div id=top class=top></div>
 <div id=grid class=grid></div>
 </div>
 
 <script>
 let $=s=>document.getElementById(s);
-let S={nodes:[],base:'aquasense/moses_kaaga_9x7p2',cli:null,role:null,cur:null,ip:'',lastSync:0,timer:null};
-let REG=JSON.parse(localStorage.getItem('AQUA_CUSTOMER_ONLY')||'[]');
-if(REG.length==0){
-  REG=[
-    {id:'1',name:'Customer 1 - Farm A',pin:'1234',registered:true},
-    {id:'2',name:'Customer 2 - Farm B',pin:'2345',registered:true},
-    {id:'3',name:'Customer 3 - Farm C',pin:'3456',registered:true},
-    {id:'4',name:'Customer 4 - Farm D',pin:'4567',registered:true}
-  ];
-  localStorage.setItem('AQUA_CUSTOMER_ONLY',JSON.stringify(REG));
-}
-function saveReg(){localStorage.setItem('AQUA_CUSTOMER_ONLY',JSON.stringify(REG));}
-function isOnline(id){let n=S.nodes.find(x=>x.id==String(id)); return n && (Date.now()-n.lastSeen<65000); }
-function getNode(id){return S.nodes.find(x=>x.id==String(id));}
+let S={nodes:[],base:'',cli:null,role:null,cur:null,ip:'',last:0,timer:null};
+let REG=JSON.parse(localStorage.getItem('REG_MIN')||'[]');
+if(REG.length==0){REG=[{id:'1',name:'Customer 1',pin:'1234'},{id:'2',name:'Customer 2',pin:'2345'},{id:'3',name:'Customer 3',pin:'3456'},{id:'4',name:'Customer 4',pin:'4567'}]; localStorage.setItem('REG_MIN',JSON.stringify(REG));}
+function save(){localStorage.setItem('REG_MIN',JSON.stringify(REG));}
+function online(id){let n=S.nodes.find(x=>x.id==String(id)); return n && Date.now()-n.last<60000;}
+function get(id){return S.nodes.find(x=>x.id==String(id));}
 
-function mergeMaster(data){
-  if(!data||!data.nodes) return;
-  // Filter out monitor id 0 if master still sends it - we only want customers 1,2,3...
-  let customerNodes = data.nodes.filter(n=>String(n.id)!='0');
-  customerNodes.forEach(o=>{
+function merge(d){
+  if(!d||!d.nodes) return;
+  d.nodes.filter(n=>String(n.id)!='0').forEach(o=>{
     let id=String(o.id);
-    let idx=S.nodes.findIndex(x=>x.id==id);
-    let obj={
-      id:id,
-      flow:Number(o.flow||0),
-      total:Number(o.total||0), // AMOUNT OF WATER USED
-      moist1:Number(o.moist1||o.m1||0),
-      moist2:Number(o.moist2||o.m2||0),
-      temp:Number(o.temp||0),
-      hum:Number(o.hum||0),
-      valve:o.valve||"UNKNOWN",
-      rssi:Number(o.rssi||0),
-      paid:Number(o.paid||0),
-      remaining:Number(o.remaining||0),
-      lastSeen:Date.now(),
-      uploaded:true
-    };
-    if(idx>=0) S.nodes[idx]={...S.nodes[idx],...obj}; else S.nodes.push(obj);
+    let i=S.nodes.findIndex(x=>x.id==id);
+    let obj={id:id,flow:Number(o.flow||0),total:Number(o.total||0),m1:Number(o.moist1||o.m1||0),m2:Number(o.moist2||o.m2||0),t:Number(o.temp||0),h:Number(o.hum||0),valve:o.valve||'UNKNOWN',rssi:Number(o.rssi||0),paid:Number(o.paid||0),rem:Number(o.remaining||0),last:Date.now()};
+    if(i>=0) S.nodes[i]={...S.nodes[i],...obj}; else S.nodes.push(obj);
+    if(!REG.find(r=>r.id==id)){REG.push({id:id,name:'Customer '+id,pin:'1234'}); save();}
   });
-  S.lastSync=Date.now();
-  // Auto-register any new ID that appears from LoRa as uploaded customer
-  customerNodes.forEach(o=>{
-    let id=String(o.id);
-    if(!REG.find(r=>r.id==id)){
-      REG.push({id:id,name:'Customer '+id+' - Auto Uploaded',pin:'1234',registered:true});
-      saveReg();
-    }
-  });
+  S.last=Date.now();
 }
 
 function render(){
-  let customers=S.nodes;
-  let totalWater=customers.reduce((a,b)=>a+b.total,0);
-  let totalFlow=customers.reduce((a,b)=>a+b.flow,0);
-  let onlineCount=customers.filter(n=>isOnline(n.id)).length;
-  $('live').innerHTML=`<span class="dot ${onlineCount>0?'online':'offline'}"></span> ${onlineCount}/${S.nodes.length} ONLINE | TOTAL WATER USED: ${totalWater.toFixed(1)}L | SYNC ${S.lastSync?new Date(S.lastSync).toLocaleTimeString():'WAIT MASTER'}`;
+  let tot=S.nodes.reduce((a,b)=>a+b.total,0);
+  let on=S.nodes.filter(n=>online(n.id)).length;
+  $('live').textContent=`${on}/${S.nodes.length} ONLINE | ${tot.toFixed(1)}L TOTAL | ${S.last?new Date(S.last).toLocaleTimeString():''}`;
 
   if(S.role=='admin'){
-    $('dashTitle').textContent='ADMIN - ALL CUSTOMERS 1,2,3,4... - AMOUNT OF WATER USED';
-    $('top').innerHTML=`
-      <div class=sum><div class=sum-l>TOTAL CUSTOMERS</div><div class=sum-v style="color:var(--bl)">${REG.length}</div><div style="font-size:.6rem;color:var(--m)">Registered</div></div>
-      <div class=sum><div class=sum-l>ONLINE NOW</div><div class=sum-v style="color:var(--g)">${onlineCount}</div><div style="font-size:.6rem;color:var(--m)">Uploaded from Master</div></div>
-      <div class=sum><div class=sum-l>TOTAL WATER USED</div><div class=sum-v style="color:var(--a)">${totalWater.toFixed(1)} L</div><div style="font-size:.6rem;color:var(--m)">${(totalWater/1000).toFixed(3)} M³</div></div>
-    `;
-    // SHOW ALL REGISTERED CUSTOMERS - ONLINE ONCE UPLOADED
-    $('grid').innerHTML=REG.slice().sort((a,b)=>Number(a.id)-Number(b.id)).map(reg=>{
-      let n=getNode(reg.id);
-      let online=isOnline(reg.id);
-      if(!n){
-        // Not yet uploaded - OFFLINE placeholder but still visible
-        return `<div class="card zone offline"><div class=row><b>Customer ${reg.id} - ${reg.name}</b><span class="badge offl">● OFFLINE - NOT YET UPLOADED</span></div><div style="text-align:center;padding:20px;color:var(--m)"><div style="font-size:1.2rem">⏳ Waiting Upload</div><div style="font-size:.65rem;margin-top:6px">Master must receive LoRa packet ID ${reg.id}<br>Packet format: "${reg.id}:moist1,moist2,temp,hum,flow/total"</div><div style="margin-top:10px;font-size:.7rem">Amount Used: <b>0 L</b></div></div></div>`;
-      }
-      return customerCard(n,reg,false);
+    $('title').textContent=`ADMIN - ALL`;
+    $('top').innerHTML=`<div class=card><div style="font-size:.6rem;color:var(--m)">CUSTOMERS</div><div style="font-size:1.6rem;font-weight:800">${REG.length}</div></div><div class=card><div style="font-size:.6rem;color:var(--m)">ONLINE</div><div style="font-size:1.6rem;font-weight:800;color:var(--g)">${on}</div></div><div class=card><div style="font-size:.6rem;color:var(--m)">WATER USED</div><div style="font-size:1.6rem;font-weight:800;color:var(--a)">${tot.toFixed(1)}L</div></div>`;
+    $('grid').innerHTML=REG.slice().sort((a,b)=>Number(a.id)-Number(b.id)).map(r=>{
+      let n=get(r.id); if(!n) return `<div class="card off"><div class=row><b>C${r.id} - ${r.name}</b><span style="font-size:.6rem;color:var(--y)">OFFLINE</span></div><div style="text-align:center;padding:18px;color:var(--m)">WAIT LoRa ID ${r.id}<br><span style="font-size:.6rem">${r.id}:m1,m2,t,h,flow/total</span></div><div class=row><span>USED</span><b>0L</b></div></div>`;
+      return card(n,r,false);
     }).join('');
-  }
-  else if(S.role=='customer'){
-    let reg=REG.find(r=>r.id==S.cur); let n=getNode(S.cur);
-    $('dashTitle').textContent=`CUSTOMER ${S.cur} - MY WATER USAGE ONLY`;
-    if(!n){
-      $('top').innerHTML=`<div class="card zone offline" style="grid-column:1/-1;text-align:center;padding:30px"><div style="color:var(--y);font-size:1.2rem">⏳ Your Customer ID ${S.cur} - Waiting Upload from Master</div><div style="font-size:.7rem;color:var(--m);margin-top:8px">You are registered but Master LoRa hasn't received your node yet. Once Master gets LoRa packet "${S.cur}:...", you will go ONLINE automatically.</div><div style="margin-top:12px" class=sum><div class=sum-l>AMOUNT OF WATER USED</div><div class=sum-v>0 L</div></div></div>`;
-      $('grid').innerHTML=customerCard({id:S.cur,flow:0,total:0,moist1:0,moist2:0,temp:0,hum:0,valve:'UNKNOWN',rssi:0,paid:0,remaining:0,lastSeen:0,uploaded:false}, reg, true);
-      return;
-    }
-    $('top').innerHTML=`
-    <div class="card zone online" style="border:2px solid var(--a);box-shadow:0 0 20px rgba(0,229,176,.3)">
-      <div class=row><span>MY CUSTOMER ID ${n.id} - ${reg.name} - ONLINE - UPLOADED</span><span><span class="dot online"></span> <span class="badge onl">● ONLINE</span></span></div>
-      <div style="text-align:center;margin:10px 0"><div style="font-size:.8rem;color:var(--m)">AMOUNT OF WATER USED - REAL</div><div style="font-size:3rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)} L</div><div style="font-size:.8rem">${(n.total/1000).toFixed(3)} M³ | Flow ${n.flow.toFixed(2)} L/min</div></div>
-      <div class=sensorGrid>
-        <div class=sensor><span style="font-size:.6rem">MOIST 1</span><b style="color:${n.moist1<30?'var(--r)':'var(--a)'}">${n.moist1}%</b></div>
-        <div class=sensor><span style="font-size:.6rem">MOIST 2</span><b style="color:${n.moist2<30?'var(--r)':'var(--a)'}">${n.moist2}%</b></div>
-        <div class=sensor><span style="font-size:.6rem">DHT22 TEMP</span><b style="color:var(--y)">${n.temp}°C</b></div>
-        <div class=sensor><span style="font-size:.6rem">DHT22 HUM</span><b style="color:var(--bl)">${n.hum}%</b></div>
-      </div>
-      <div class=row><span>Valve Real:</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div>
-      <div class=row><span>RSSI:</span><b>${n.rssi} dBm</b></div>
-      <div style="display:flex;gap:6px;margin-top:12px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN VALVE</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE VALVE</button><button class="btn btn-y" style="flex:1" onclick="cmd('${n.id}','auto')">AUTO</button></div>
-    </div>
-    <div class=sum><div class=sum-l>MY TOTAL WATER USED</div><div class=sum-v style="color:var(--a)">${n.total.toFixed(1)} L</div><div style="font-size:.7rem;margin-top:6px">${(n.total/1000).toFixed(3)} M³<br>Flow: ${n.flow.toFixed(2)} L/min<br>Paid: ${n.paid} Ksh | Rem: ${n.remaining.toFixed(0)} Ksh</div></div>`;
-    $('grid').innerHTML=customerCard(n,reg,true);
+  } else {
+    let r=REG.find(x=>x.id==S.cur); let n=get(S.cur);
+    $('title').textContent=`C${S.cur}`;
+    if(!n){ $('top').innerHTML=`<div class=card on style="grid-column:1/-1;text-align:center;padding:24px"><div style="font-size:1.6rem;color:var(--a)">${0}L</div><div style="font-size:.7rem">WATER USED</div><div style="font-size:.6rem;color:var(--m);margin-top:6px">WAIT LoRa ID ${S.cur}</div></div>`; $('grid').innerHTML=card({id:S.cur,flow:0,total:0,m1:0,m2:0,t:0,h:0,valve:'UNKNOWN',rssi:0,paid:0,rem:0,last:0},r,true); return;}
+    $('top').innerHTML=`<div class="card on" style="border:2px solid var(--a)"><div style="text-align:center"><div style="font-size:.7rem;color:var(--m)">WATER USED</div><div style="font-size:2.8rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.7rem">${(n.total/1000).toFixed(3)} M³ | ${n.flow.toFixed(2)} L/min</div></div><div class=sGrid><div class=s><span style="font-size:.55rem">M1</span><b>${n.m1}%</b></div><div class=s><span style="font-size:.55rem">M2</span><b>${n.m2}%</b></div><div class=s><span style="font-size:.55rem">TEMP</span><b>${n.t}°C</b></div><div class=s><span style="font-size:.55rem">HUM</span><b>${n.h}%</b></div></div><div class=row><span>VALVE</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE</button></div></div>`;
+    $('grid').innerHTML=card(n,r,true);
   }
 }
 
-function customerCard(n,reg,isOwner){
-  let online=isOnline(n.id);
-  let avgMoist=((n.moist1+n.moist2)/2).toFixed(0);
-  let pay = isOwner? `<div style="margin-top:10px;border-top:2px dashed var(--a);padding:12px;background:rgba(0,229,176,.07);border-radius:10px"><div style="font-size:.7rem;color:var(--a);font-weight:800">💰 M-PESA PAYMENT - CUSTOMER ONLY</div><div style="display:flex;gap:6px;margin-top:8px"><input id=am${n.id} type=number placeholder="Ksh 100=1M³"><button class="btn btn-a" onclick="payZone('${n.id}')">PAY & OPEN</button></div><div id=mp${n.id} style="font-size:.7rem;text-align:center;margin-top:6px"></div></div>`:'';
-  return `<div class="card zone ${online?'online':'offline'}">
-    <div class=row><b>Customer ${n.id} - ${reg?reg.name:''}</b><span class="badge ${online?'onl':'offl'}">${online?'● ONLINE - UPLOADED':'● OFFLINE'} ${n.rssi?n.rssi+'dBm':''}</span></div>
-    <div style="text-align:center;margin:8px 0"><div style="font-size:.65rem;color:var(--m)">AMOUNT OF WATER USED</div><div style="font-size:2.2rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)} L</div><div style="font-size:.7rem">${(n.total/1000).toFixed(3)} M³ | ${n.flow.toFixed(2)} L/min</div></div>
-    <div class=sensorGrid>
-      <div class=sensor><span style="font-size:.55rem">MOIST 1</span><b>${n.moist1}%</b></div>
-      <div class=sensor><span style="font-size:.55rem">MOIST 2</span><b>${n.moist2}%</b></div>
-      <div class=sensor><span style="font-size:.55rem">DHT22 T</span><b>${n.temp}°C</b></div>
-      <div class=sensor><span style="font-size:.55rem">DHT22 H</span><b>${n.hum}%</b></div>
+function card(n,r,own){
+  let on=online(n.id);
+  return `<div class="card ${on?'on':'off'}">
+    <div class=row><b>C${n.id} - ${r?r.name:''}</b><span style="font-size:.6rem" class="${on?'open':'off'}">${on?'ONLINE':'OFFLINE'}</span></div>
+    <div style="text-align:center;margin:6px 0"><div style="font-size:2rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.65rem">${n.flow.toFixed(2)} L/min USED</div></div>
+    <div class=sGrid>
+      <div class=s><span style="font-size:.55rem">M1</span><b>${n.m1}%</b></div>
+      <div class=s><span style="font-size:.55rem">M2</span><b>${n.m2}%</b></div>
+      <div class=s><span style="font-size:.55rem">T</span><b>${n.t}°C</b></div>
+      <div class=s><span style="font-size:.55rem">H</span><b>${n.h}%</b></div>
     </div>
-    <div class=row><span>Avg Moist:</span><b style="color:${avgMoist<30?'var(--r)':'var(--g)'}">${avgMoist}% ${avgMoist<30?'DRY':''}</b></div>
-    <div class=row><span>Valve:</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div>
-    <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN VALVE</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE</button></div>
-    ${pay}
+    <div class=row><span>VALVE</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div>
+    <div class=row><span>RSSI</span><b>${n.rssi}dBm</b></div>
+    <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE</button></div>
+    ${own?`<div style="margin-top:8px;border-top:1px dashed var(--a);padding-top:8px"><div style="display:flex;gap:6px"><input id=am${n.id} type=number placeholder="Ksh"><button class="btn btn-a" onclick="pay('${n.id}')">PAY</button></div><div id=mp${n.id} style="font-size:.65rem;text-align:center;margin-top:4px"></div></div>`:''}
   </div>`;
 }
 
-function cmd(id,action){let p=JSON.stringify({node:String(id),action:action}); if(S.cli&&S.cli.connected) S.cli.publish(S.base+'/cmd',p); if(S.ip) fetch(`http://${S.ip}/valve?node=${id}&action=${action}`,{mode:'no-cors'}).catch(()=>{});}
-function payZone(id){let amt=Number($('am'+id).value); if(!amt) return; let p=JSON.stringify({node:String(id),amount:amt}); if(S.cli&&S.cli.connected) S.cli.publish(S.base+'/cmd',p); if(S.ip) fetch(`http://${S.ip}/pay?node=${id}&amount=${amt}`,{mode:'no-cors'}).catch(()=>{}); $('mp'+id).textContent='✅ '+amt+'Ksh sent - Valve will OPEN';}
-function connectAll(){
-  S.base=$('cfgTopic').value.trim()||'aquasense/moses_kaaga_9x7p2'; S.ip=$('cfgIp').value.trim().replace(/\/$/,'');
-  localStorage.setItem('AQUA_BASE',S.base); localStorage.setItem('AQUA_IP',S.ip);
+function cmd(id,a){let p=JSON.stringify({node:String(id),action:a}); if(S.cli&&S.cli.connected) S.cli.publish(S.base+'/cmd',p); if(S.ip) fetch(`http://${S.ip}/valve?node=${id}&action=${a}`,{mode:'no-cors'}).catch(()=>{});}
+function pay(id){let v=Number($('am'+id).value); if(!v) return; let p=JSON.stringify({node:String(id),amount:v}); if(S.cli&&S.cli.connected) S.cli.publish(S.base+'/cmd',p); if(S.ip) fetch(`http://${S.ip}/pay?node=${id}&amount=${v}`,{mode:'no-cors'}).catch(()=>{}); $('mp'+id).textContent=v+' Ksh OK';}
+
+function connect(){
+  S.base=$('topic').value.trim(); S.ip=$('ip').value.trim().replace(/\/$/,'');
+  localStorage.setItem('B',S.base); localStorage.setItem('IP',S.ip);
   if(S.timer) clearInterval(S.timer);
-  if(S.ip){
-    let poll=()=>{fetch(`${S.ip}/data`,{cache:'no-store'}).then(r=>r.json()).then(d=>{mergeMaster(d); render();}).catch(()=>{});};
-    poll(); S.timer=setInterval(poll,2000);
-  }
-  try{
-    if(S.cli) S.cli.end();
-    S.cli=mqtt.connect('wss://broker.hivemq.com:8884/mqtt',{clientId:'cust_only_'+Math.random().toString(16).slice(2)});
-    S.cli.on('connect',()=>{S.cli.subscribe(S.base+'/live');});
-    S.cli.on('message',(t,m)=>{try{let d=JSON.parse(m.toString()); mergeMaster(d); render();}catch(e){}});
-  }catch(e){}
+  if(S.ip){let f=()=>{fetch(`${S.ip}/data`,{cache:'no-store'}).then(r=>r.json()).then(d=>{merge(d); render();}).catch(()=>{});}; f(); S.timer=setInterval(f,2000);}
+  try{if(S.cli) S.cli.end(); S.cli=mqtt.connect('wss://broker.hivemq.com:8884/mqtt',{clientId:'ir_'+Math.random().toString(16).slice(2)}); S.cli.on('connect',()=>{S.cli.subscribe(S.base+'/live');}); S.cli.on('message',(t,m)=>{try{merge(JSON.parse(m.toString())); render();}catch(e){}});}catch(e){}
 }
-function doSingleLogin(){
-  let u=$('uid').value.trim().toLowerCase(); let p=$('pwd').value.trim();
-  S.base=$('cfgTopic').value.trim(); S.ip=$('cfgIp').value.trim(); $('msg').textContent='';
-  if(u==='admin' && p==='1234'){ S.role='admin'; $('home').style.display='none'; $('dash').style.display='block'; render(); connectAll(); setInterval(()=>{if(S.role) render();},3000); return; }
-  let f=REG.find(x=>x.id===u && x.pin===p && x.registered);
-  if(f){ S.role='customer'; S.cur=u; $('home').style.display='none'; $('dash').style.display='block'; render(); connectAll(); setInterval(()=>{if(S.role) render();},3000); return; }
-  $('msg').textContent='❌ Wrong. Admin: admin/1234 | Customer: ID/PIN e.g. 1/1234';
+
+function login(){
+  let u=$('uid').value.trim().toLowerCase(), p=$('pwd').value.trim();
+  S.base=$('topic').value.trim(); S.ip=$('ip').value.trim();
+  $('msg').textContent='';
+  if(u=='admin'&&p=='1234'){S.role='admin'; $('home').style.display='none'; $('dash').style.display='block'; render(); connect(); setInterval(()=>{if(S.role) render();},3000); return;}
+  let f=REG.find(x=>x.id==u&&x.pin==p); if(f){S.role='customer'; S.cur=u; $('home').style.display='none'; $('dash').style.display='block'; render(); connect(); setInterval(()=>{if(S.role) render();},3000); return;}
+  $('msg').textContent='Wrong. admin/1234 or ID/PIN';
 }
-function showReg(){let id=prompt("Customer ID (1,2,3,4... must match LoRa ID):"); if(!id) return; let name=prompt("Customer Name:","Customer "+id); let pin=prompt("PIN:","1234"); if(name&&pin){REG.push({id:String(id),name,pin,registered:true}); saveReg(); alert("Registered Customer "+id+" - Will go ONLINE once Master receives LoRa for ID "+id); render();}}
-function logout(){ $('dash').style.display='none'; $('home').style.display='flex'; S.role=null; if(S.timer) clearInterval(S.timer); if(S.cli) S.cli.end(); S.nodes=[]; }
-(function(){ $('cfgTopic').value=localStorage.getItem('AQUA_BASE')||'aquasense/moses_kaaga_9x7p2'; $('cfgIp').value=localStorage.getItem('AQUA_IP')||''; })();
+function reg(){let id=prompt("ID e.g. 1"); if(!id) return; let name=prompt("Name","Customer "+id); let pin=prompt("PIN","1234"); if(name&&pin){REG.push({id:String(id),name,pin}); save(); render();}}
+function logout(){ $('dash').style.display='none'; $('home').style.display='flex'; S.role=null; if(S.timer) clearInterval(S.timer); if(S.cli) S.cli.end(); S.nodes=[];}
+(function(){ $('topic').value=localStorage.getItem('B')||'aquasense/moses_kaaga_9x7p2'; $('ip').value=localStorage.getItem('IP')||'';})();
 </script>
 </body>
 </html>
