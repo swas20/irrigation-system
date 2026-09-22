@@ -6,16 +6,16 @@
 <title>IRRIGATION CONTROL</title>
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <style>
-:root{--bg:#070b14;--p:#101828;--c:#121d33;--b:#1e2f52;--a:#00e5b0;--bl:#3b82f6;--r:#ef4444;--y:#f59e0b;--g:#22c55e;--t:#e6edf7;--m:#8a9bb5}
+:root{--bg:#070b14;--p:#101828;--c:#121d33;--b:#1e2f52;--a:#00e5b0;--bl:#3b82f6;--r:#ef4444;--g:#22c55e;--t:#e6edf7;--m:#8a9bb5}
 *{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--t);font-family:monospace}
-header{padding:12px 16px;background:var(--p);border-bottom:1px solid var(--b);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0}
+header{padding:12px 16px;background:var(--p);border-bottom:1px solid var(--b);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
 .btn{border:0;border-radius:8px;padding:8px 12px;font-weight:800;cursor:pointer;font-family:monospace}.btn-bl{background:var(--bl);color:#fff}.btn-a{background:var(--a);color:#000}.btn-r{background:transparent;color:var(--r);border:1px solid var(--r)}
 input{background:var(--bg);border:1px solid var(--b);color:#fff;padding:10px;border-radius:8px;width:100%}
 .home{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 20% 30%,#0f1e38,#070b14)}
 .cardBox{background:var(--c);border:2px solid var(--a);border-radius:16px;padding:24px;width:380px;max-width:95vw;text-align:center}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding:12px;max-width:1400px;margin:auto}
 .top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px;max-width:1400px;margin:auto}@media(max-width:800px){.top{grid-template-columns:1fr}}
-.card{background:var(--c);border:1px solid var(--b);border-radius:14px;padding:14px}.on{border-color:var(--g)}.off{border-color:#444;opacity:.8}
+.card{background:var(--c);border:1px solid var(--b);border-radius:14px;padding:14px}.on{border-color:var(--g);box-shadow:0 0 15px rgba(34,197,94,.15)}.off{border-color:#444;opacity:.8}
 .badge{padding:3px 8px;border-radius:20px;font-size:.65rem;font-weight:800}.open{background:rgba(0,229,176,.15);color:var(--a);border:1px solid var(--a)}.closed{background:rgba(239,68,68,.15);color:var(--r);border:1px solid var(--r)}
 .row{display:flex;justify-content:space-between;font-size:.75rem;margin:4px 0}
 .sGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.s{background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:8px;text-align:center}.s b{display:block;font-size:1.1rem}
@@ -27,7 +27,7 @@ input{background:var(--bg);border:1px solid var(--b);color:#fff;padding:10px;bor
 <div id=home class=home>
   <div class=cardBox>
     <h2 style="color:var(--a)">IRRIGATION</h2>
-    <div style="font-size:.6rem;color:var(--m);margin:8px 0">admin/1234 = ALL<br>1/1234 = OWN</div>
+    <div style="font-size:.6rem;color:var(--m);margin:8px 0">admin/1234 = ALL | ID/PIN = OWN</div>
     <input id=uid placeholder="ID - admin or 1" style="margin-top:12px">
     <input id=pwd type=password placeholder="PIN - 1234" style="margin-top:8px">
     <button class="btn btn-a" style="width:100%;margin-top:10px" onclick="login()">LOGIN</button>
@@ -63,7 +63,7 @@ function merge(d){
   d.nodes.filter(n=>String(n.id)!='0').forEach(o=>{
     let id=String(o.id);
     let i=S.nodes.findIndex(x=>x.id==id);
-    let obj={id:id,flow:Number(o.flow||0),total:Number(o.total||0),m1:Number(o.moist1||o.m1||0),m2:Number(o.moist2||o.m2||0),t:Number(o.temp||0),h:Number(o.hum||0),valve:o.valve||'UNKNOWN',rssi:Number(o.rssi||0),paid:Number(o.paid||0),rem:Number(o.remaining||0),last:Date.now()};
+    let obj={id:id,flow:Number(o.flow||0),total:Number(o.total||0),m1:Number(o.moist1||o.m1||0),m2:Number(o.moist2||o.m2||0),t:Number(o.temp||0),h:Number(o.hum||0),valve:o.valve||'UNKNOWN',rssi:Number(o.rssi||0),last:Date.now()};
     if(i>=0) S.nodes[i]={...S.nodes[i],...obj}; else S.nodes.push(obj);
     if(!REG.find(r=>r.id==id)){REG.push({id:id,name:'Customer '+id,pin:'1234'}); save();}
   });
@@ -80,21 +80,21 @@ function render(){
     $('top').innerHTML=`<div class=card><div style="font-size:.6rem;color:var(--m)">CUSTOMERS</div><div style="font-size:1.6rem;font-weight:800">${REG.length}</div></div><div class=card><div style="font-size:.6rem;color:var(--m)">ONLINE</div><div style="font-size:1.6rem;font-weight:800;color:var(--g)">${on}</div></div><div class=card><div style="font-size:.6rem;color:var(--m)">WATER USED</div><div style="font-size:1.6rem;font-weight:800;color:var(--a)">${tot.toFixed(1)}L</div></div>`;
     $('grid').innerHTML=REG.slice().sort((a,b)=>Number(a.id)-Number(b.id)).map(r=>{
       let n=get(r.id); if(!n) return `<div class="card off"><div class=row><b>C${r.id} - ${r.name}</b><span style="font-size:.6rem;color:var(--y)">OFFLINE</span></div><div style="text-align:center;padding:18px;color:var(--m)">WAIT LoRa ID ${r.id}<br><span style="font-size:.6rem">${r.id}:m1,m2,t,h,flow/total</span></div><div class=row><span>USED</span><b>0L</b></div></div>`;
-      return card(n,r,false);
+      return card(n,r);
     }).join('');
   } else {
     let r=REG.find(x=>x.id==S.cur); let n=get(S.cur);
     $('title').textContent=`C${S.cur}`;
-    if(!n){ $('top').innerHTML=`<div class=card on style="grid-column:1/-1;text-align:center;padding:24px"><div style="font-size:1.6rem;color:var(--a)">${0}L</div><div style="font-size:.7rem">WATER USED</div><div style="font-size:.6rem;color:var(--m);margin-top:6px">WAIT LoRa ID ${S.cur}</div></div>`; $('grid').innerHTML=card({id:S.cur,flow:0,total:0,m1:0,m2:0,t:0,h:0,valve:'UNKNOWN',rssi:0,paid:0,rem:0,last:0},r,true); return;}
+    if(!n){ $('top').innerHTML=`<div class="card on" style="grid-column:1/-1;text-align:center;padding:24px"><div style="font-size:1.6rem;color:var(--a)">${0}L</div><div style="font-size:.7rem">WATER USED</div><div style="font-size:.6rem;color:var(--m);margin-top:6px">WAIT LoRa ID ${S.cur}</div></div>`; $('grid').innerHTML=card({id:S.cur,flow:0,total:0,m1:0,m2:0,t:0,h:0,valve:'UNKNOWN',rssi:0,last:0},r); return;}
     $('top').innerHTML=`<div class="card on" style="border:2px solid var(--a)"><div style="text-align:center"><div style="font-size:.7rem;color:var(--m)">WATER USED</div><div style="font-size:2.8rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.7rem">${(n.total/1000).toFixed(3)} M³ | ${n.flow.toFixed(2)} L/min</div></div><div class=sGrid><div class=s><span style="font-size:.55rem">M1</span><b>${n.m1}%</b></div><div class=s><span style="font-size:.55rem">M2</span><b>${n.m2}%</b></div><div class=s><span style="font-size:.55rem">TEMP</span><b>${n.t}°C</b></div><div class=s><span style="font-size:.55rem">HUM</span><b>${n.h}%</b></div></div><div class=row><span>VALVE</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE</button></div></div>`;
-    $('grid').innerHTML=card(n,r,true);
+    $('grid').innerHTML=card(n,r);
   }
 }
 
-function card(n,r,own){
+function card(n,r){
   let on=online(n.id);
   return `<div class="card ${on?'on':'off'}">
-    <div class=row><b>C${n.id} - ${r?r.name:''}</b><span style="font-size:.6rem" class="${on?'open':'off'}">${on?'ONLINE':'OFFLINE'}</span></div>
+    <div class=row><b>C${n.id} - ${r?r.name:''}</b><span style="font-size:.6rem" class="${on?'open':'closed'}">${on?'ONLINE':'OFFLINE'}</span></div>
     <div style="text-align:center;margin:6px 0"><div style="font-size:2rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.65rem">${n.flow.toFixed(2)} L/min USED</div></div>
     <div class=sGrid>
       <div class=s><span style="font-size:.55rem">M1</span><b>${n.m1}%</b></div>
@@ -105,12 +105,10 @@ function card(n,r,own){
     <div class=row><span>VALVE</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div>
     <div class=row><span>RSSI</span><b>${n.rssi}dBm</b></div>
     <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE</button></div>
-    ${own?`<div style="margin-top:8px;border-top:1px dashed var(--a);padding-top:8px"><div style="display:flex;gap:6px"><input id=am${n.id} type=number placeholder="Ksh"><button class="btn btn-a" onclick="pay('${n.id}')">PAY</button></div><div id=mp${n.id} style="font-size:.65rem;text-align:center;margin-top:4px"></div></div>`:''}
   </div>`;
 }
 
 function cmd(id,a){let p=JSON.stringify({node:String(id),action:a}); if(S.cli&&S.cli.connected) S.cli.publish(S.base+'/cmd',p); if(S.ip) fetch(`http://${S.ip}/valve?node=${id}&action=${a}`,{mode:'no-cors'}).catch(()=>{});}
-function pay(id){let v=Number($('am'+id).value); if(!v) return; let p=JSON.stringify({node:String(id),amount:v}); if(S.cli&&S.cli.connected) S.cli.publish(S.base+'/cmd',p); if(S.ip) fetch(`http://${S.ip}/pay?node=${id}&amount=${v}`,{mode:'no-cors'}).catch(()=>{}); $('mp'+id).textContent=v+' Ksh OK';}
 
 function connect(){
   S.base=$('topic').value.trim(); S.ip=$('ip').value.trim().replace(/\/$/,'');
