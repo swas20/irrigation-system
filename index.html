@@ -3,23 +3,24 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>IRRIGATION CONTROL</title>
+<title>IRRIGATION - ONLY ONLINE</title>
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <style>
 :root{--bg:#070b14;--p:#101828;--c:#121d33;--b:#1e2f52;--a:#00e5b0;--bl:#3b82f6;--r:#ef4444;--g:#22c55e;--t:#e6edf7;--m:#8a9bb5}
 *{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--t);font-family:monospace}
-header{padding:12px 16px;background:var(--p);border-bottom:1px solid var(--b);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+header{padding:12px 16px;background:var(--p);border-bottom:1px solid var(--b);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0}
 .btn{border:0;border-radius:8px;padding:8px 12px;font-weight:800;cursor:pointer;font-family:monospace}.btn-bl{background:var(--bl);color:#fff}.btn-a{background:var(--a);color:#000}.btn-r{background:transparent;color:var(--r);border:1px solid var(--r)}
 input{background:var(--bg);border:1px solid var(--b);color:#fff;padding:10px;border-radius:8px;width:100%}
 .home{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 20% 30%,#0f1e38,#070b14)}
 .cardBox{background:var(--c);border:2px solid var(--a);border-radius:16px;padding:24px;width:380px;max-width:95vw;text-align:center}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding:12px;max-width:1400px;margin:auto}
 .top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px;max-width:1400px;margin:auto}@media(max-width:800px){.top{grid-template-columns:1fr}}
-.card{background:var(--c);border:1px solid var(--b);border-radius:14px;padding:14px}.on{border-color:var(--g);box-shadow:0 0 15px rgba(34,197,94,.15)}.off{border-color:#444;opacity:.8}
+.card{background:var(--c);border:1.5px solid var(--g);border-radius:14px;padding:14px;box-shadow:0 0 15px rgba(34,197,94,.15)}
 .badge{padding:3px 8px;border-radius:20px;font-size:.65rem;font-weight:800}.open{background:rgba(0,229,176,.15);color:var(--a);border:1px solid var(--a)}.closed{background:rgba(239,68,68,.15);color:var(--r);border:1px solid var(--r)}
 .row{display:flex;justify-content:space-between;font-size:.75rem;margin:4px 0}
 .sGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.s{background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:8px;text-align:center}.s b{display:block;font-size:1.1rem}
 #dash{display:none}
+.empty{grid-column:1/-1;text-align:center;padding:50px;color:var(--m);border:1px dashed var(--b);border-radius:14px}
 </style>
 </head>
 <body>
@@ -27,7 +28,7 @@ input{background:var(--bg);border:1px solid var(--b);color:#fff;padding:10px;bor
 <div id=home class=home>
   <div class=cardBox>
     <h2 style="color:var(--a)">IRRIGATION</h2>
-    <div style="font-size:.6rem;color:var(--m);margin:8px 0">admin/1234 = ALL | ID/PIN = OWN</div>
+    <div style="font-size:.6rem;color:var(--m);margin:8px 0">admin/1234 = ALL ONLINE<br>ID/PIN = OWN ONLINE ONLY</div>
     <input id=uid placeholder="ID - admin or 1" style="margin-top:12px">
     <input id=pwd type=password placeholder="PIN - 1234" style="margin-top:8px">
     <button class="btn btn-a" style="width:100%;margin-top:10px" onclick="login()">LOGIN</button>
@@ -52,10 +53,10 @@ input{background:var(--bg);border:1px solid var(--b);color:#fff;padding:10px;bor
 <script>
 let $=s=>document.getElementById(s);
 let S={nodes:[],base:'',cli:null,role:null,cur:null,ip:'',last:0,timer:null};
-let REG=JSON.parse(localStorage.getItem('REG_MIN')||'[]');
-if(REG.length==0){REG=[{id:'1',name:'Customer 1',pin:'1234'},{id:'2',name:'Customer 2',pin:'2345'},{id:'3',name:'Customer 3',pin:'3456'},{id:'4',name:'Customer 4',pin:'4567'}]; localStorage.setItem('REG_MIN',JSON.stringify(REG));}
-function save(){localStorage.setItem('REG_MIN',JSON.stringify(REG));}
-function online(id){let n=S.nodes.find(x=>x.id==String(id)); return n && Date.now()-n.last<60000;}
+let REG=JSON.parse(localStorage.getItem('REG_ONLINE_ONLY')||'[]');
+if(REG.length==0){REG=[{id:'1',name:'Customer 1',pin:'1234'},{id:'2',name:'Customer 2',pin:'2345'},{id:'3',name:'Customer 3',pin:'3456'},{id:'4',name:'Customer 4',pin:'4567'}]; localStorage.setItem('REG_ONLINE_ONLY',JSON.stringify(REG));}
+function save(){localStorage.setItem('REG_ONLINE_ONLY',JSON.stringify(REG));}
+function online(id){let n=S.nodes.find(x=>x.id==String(id)); return n && Date.now()-n.last<65000;}
 function get(id){return S.nodes.find(x=>x.id==String(id));}
 
 function merge(d){
@@ -71,40 +72,52 @@ function merge(d){
 }
 
 function render(){
-  let tot=S.nodes.reduce((a,b)=>a+b.total,0);
-  let on=S.nodes.filter(n=>online(n.id)).length;
-  $('live').textContent=`${on}/${S.nodes.length} ONLINE | ${tot.toFixed(1)}L TOTAL | ${S.last?new Date(S.last).toLocaleTimeString():''}`;
+  // ONLY ONLINE NODES
+  let onlineNodes = S.nodes.filter(n=>online(n.id));
+  let tot=onlineNodes.reduce((a,b)=>a+b.total,0);
+  $('live').textContent=`${onlineNodes.length} ONLINE | ${tot.toFixed(1)}L TOTAL | ${S.last?new Date(S.last).toLocaleTimeString():''}`;
 
   if(S.role=='admin'){
-    $('title').textContent=`ADMIN - ALL`;
-    $('top').innerHTML=`<div class=card><div style="font-size:.6rem;color:var(--m)">CUSTOMERS</div><div style="font-size:1.6rem;font-weight:800">${REG.length}</div></div><div class=card><div style="font-size:.6rem;color:var(--m)">ONLINE</div><div style="font-size:1.6rem;font-weight:800;color:var(--g)">${on}</div></div><div class=card><div style="font-size:.6rem;color:var(--m)">WATER USED</div><div style="font-size:1.6rem;font-weight:800;color:var(--a)">${tot.toFixed(1)}L</div></div>`;
-    $('grid').innerHTML=REG.slice().sort((a,b)=>Number(a.id)-Number(b.id)).map(r=>{
-      let n=get(r.id); if(!n) return `<div class="card off"><div class=row><b>C${r.id} - ${r.name}</b><span style="font-size:.6rem;color:var(--y)">OFFLINE</span></div><div style="text-align:center;padding:18px;color:var(--m)">WAIT LoRa ID ${r.id}<br><span style="font-size:.6rem">${r.id}:m1,m2,t,h,flow/total</span></div><div class=row><span>USED</span><b>0L</b></div></div>`;
-      return card(n,r);
-    }).join('');
+    $('title').textContent=`ADMIN - ONLINE ONLY`;
+    $('top').innerHTML=`<div class=card><div style="font-size:.6rem;color:var(--m)">ONLINE NOW</div><div style="font-size:1.8rem;font-weight:800;color:var(--g)">${onlineNodes.length}</div></div><div class=card><div style="font-size:.6rem;color:var(--m)">WATER USED</div><div style="font-size:1.8rem;font-weight:800;color:var(--a)">${tot.toFixed(1)}L</div></div><div class=card><div style="font-size:.6rem;color:var(--m)">TOTAL FLOW</div><div style="font-size:1.8rem;font-weight:800">${onlineNodes.reduce((a,b)=>a+b.flow,0).toFixed(2)} L/min</div></div>`;
+    
+    if(onlineNodes.length==0){
+      $('grid').innerHTML=`<div class=empty>⏳ NO ONLINE NODES<br><span style="font-size:.7rem">Waiting for Master LoRa to upload Customer 1,2,3,4...<br>Packet format: ID:m1,m2,t,h,flow/total e.g. 1:30,35,28.5,65,2.3/120</span></div>`;
+    } else {
+      $('grid').innerHTML=onlineNodes.sort((a,b)=>Number(a.id)-Number(b.id)).map(n=>{
+        let r=REG.find(x=>x.id==n.id)||{name:'Customer '+n.id};
+        return card(n,r);
+      }).join('');
+    }
   } else {
-    let r=REG.find(x=>x.id==S.cur); let n=get(S.cur);
+    // CUSTOMER - only if ONLINE
+    let r=REG.find(x=>x.id==S.cur);
+    let n=get(S.cur);
     $('title').textContent=`C${S.cur}`;
-    if(!n){ $('top').innerHTML=`<div class="card on" style="grid-column:1/-1;text-align:center;padding:24px"><div style="font-size:1.6rem;color:var(--a)">${0}L</div><div style="font-size:.7rem">WATER USED</div><div style="font-size:.6rem;color:var(--m);margin-top:6px">WAIT LoRa ID ${S.cur}</div></div>`; $('grid').innerHTML=card({id:S.cur,flow:0,total:0,m1:0,m2:0,t:0,h:0,valve:'UNKNOWN',rssi:0,last:0},r); return;}
-    $('top').innerHTML=`<div class="card on" style="border:2px solid var(--a)"><div style="text-align:center"><div style="font-size:.7rem;color:var(--m)">WATER USED</div><div style="font-size:2.8rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.7rem">${(n.total/1000).toFixed(3)} M³ | ${n.flow.toFixed(2)} L/min</div></div><div class=sGrid><div class=s><span style="font-size:.55rem">M1</span><b>${n.m1}%</b></div><div class=s><span style="font-size:.55rem">M2</span><b>${n.m2}%</b></div><div class=s><span style="font-size:.55rem">TEMP</span><b>${n.t}°C</b></div><div class=s><span style="font-size:.55rem">HUM</span><b>${n.h}%</b></div></div><div class=row><span>VALVE</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE</button></div></div>`;
+    if(!n || !online(S.cur)){
+      $('top').innerHTML=`<div class=card style="grid-column:1/-1;text-align:center;padding:30px;border:1px dashed var(--y)"><div style="font-size:1.2rem;color:var(--y)">OFFLINE - WAIT UPLOAD</div><div style="font-size:.7rem;color:var(--m);margin-top:8px">Customer ID ${S.cur} is not ONLINE yet.<br>Master must receive LoRa for ID ${S.cur} to go ONLINE.</div></div>`;
+      $('grid').innerHTML=`<div class=empty>Your node ID ${S.cur} is OFFLINE<br>Only ONLINE nodes appear. Wait for Master LoRa upload.</div>`;
+      return;
+    }
+    $('top').innerHTML=`<div class="card" style="border:2px solid var(--a)"><div style="text-align:center"><div style="font-size:.7rem;color:var(--m)">WATER USED - ONLINE</div><div style="font-size:2.8rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.7rem">${(n.total/1000).toFixed(3)} M³ | ${n.flow.toFixed(2)} L/min</div></div><div class=sGrid><div class=s><span style="font-size:.55rem">M1</span><b>${n.m1}%</b></div><div class=s><span style="font-size:.55rem">M2</span><b>${n.m2}%</b></div><div class=s><span style="font-size:.55rem">TEMP</span><b>${n.t}°C</b></div><div class=s><span style="font-size:.55rem">HUM</span><b>${n.h}%</b></div></div><div class=row><span>VALVE</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE</button></div></div>`;
     $('grid').innerHTML=card(n,r);
   }
 }
 
 function card(n,r){
-  let on=online(n.id);
-  return `<div class="card ${on?'on':'off'}">
-    <div class=row><b>C${n.id} - ${r?r.name:''}</b><span style="font-size:.6rem" class="${on?'open':'closed'}">${on?'ONLINE':'OFFLINE'}</span></div>
-    <div style="text-align:center;margin:6px 0"><div style="font-size:2rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.65rem">${n.flow.toFixed(2)} L/min USED</div></div>
+  return `<div class="card">
+    <div class=row><b>C${n.id} - ${r?r.name:''}</b><span style="font-size:.6rem;color:var(--g)">● ONLINE</span></div>
+    <div style="text-align:center;margin:6px 0"><div style="font-size:2rem;font-weight:900;color:var(--a)">${n.total.toFixed(1)}L</div><div style="font-size:.65rem">${n.flow.toFixed(2)} L/min WATER USED</div></div>
     <div class=sGrid>
-      <div class=s><span style="font-size:.55rem">M1</span><b>${n.m1}%</b></div>
-      <div class=s><span style="font-size:.55rem">M2</span><b>${n.m2}%</b></div>
-      <div class=s><span style="font-size:.55rem">T</span><b>${n.t}°C</b></div>
-      <div class=s><span style="font-size:.55rem">H</span><b>${n.h}%</b></div>
+      <div class=s><span style="font-size:.55rem">MOIST 1</span><b>${n.m1}%</b></div>
+      <div class=s><span style="font-size:.55rem">MOIST 2</span><b>${n.m2}%</b></div>
+      <div class=s><span style="font-size:.55rem">DHT22 T</span><b>${n.t}°C</b></div>
+      <div class=s><span style="font-size:.55rem">DHT22 H</span><b>${n.h}%</b></div>
     </div>
     <div class=row><span>VALVE</span><b class="badge ${n.valve.includes('OPEN')?'open':'closed'}">${n.valve}</b></div>
+    <div class=row><span>FLOW</span><b>${n.flow.toFixed(2)} L/min</b></div>
     <div class=row><span>RSSI</span><b>${n.rssi}dBm</b></div>
-    <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE</button></div>
+    <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-a" style="flex:1" onclick="cmd('${n.id}','open')">OPEN VALVE</button><button class="btn btn-r" style="flex:1" onclick="cmd('${n.id}','close')">CLOSE VALVE</button></div>
   </div>`;
 }
 
@@ -115,7 +128,7 @@ function connect(){
   localStorage.setItem('B',S.base); localStorage.setItem('IP',S.ip);
   if(S.timer) clearInterval(S.timer);
   if(S.ip){let f=()=>{fetch(`${S.ip}/data`,{cache:'no-store'}).then(r=>r.json()).then(d=>{merge(d); render();}).catch(()=>{});}; f(); S.timer=setInterval(f,2000);}
-  try{if(S.cli) S.cli.end(); S.cli=mqtt.connect('wss://broker.hivemq.com:8884/mqtt',{clientId:'ir_'+Math.random().toString(16).slice(2)}); S.cli.on('connect',()=>{S.cli.subscribe(S.base+'/live');}); S.cli.on('message',(t,m)=>{try{merge(JSON.parse(m.toString())); render();}catch(e){}});}catch(e){}
+  try{if(S.cli) S.cli.end(); S.cli=mqtt.connect('wss://broker.hivemq.com:8884/mqtt',{clientId:'on_'+Math.random().toString(16).slice(2)}); S.cli.on('connect',()=>{S.cli.subscribe(S.base+'/live');}); S.cli.on('message',(t,m)=>{try{merge(JSON.parse(m.toString())); render();}catch(e){}});}catch(e){}
 }
 
 function login(){
@@ -126,7 +139,7 @@ function login(){
   let f=REG.find(x=>x.id==u&&x.pin==p); if(f){S.role='customer'; S.cur=u; $('home').style.display='none'; $('dash').style.display='block'; render(); connect(); setInterval(()=>{if(S.role) render();},3000); return;}
   $('msg').textContent='Wrong. admin/1234 or ID/PIN';
 }
-function reg(){let id=prompt("ID e.g. 1"); if(!id) return; let name=prompt("Name","Customer "+id); let pin=prompt("PIN","1234"); if(name&&pin){REG.push({id:String(id),name,pin}); save(); render();}}
+function reg(){let id=prompt("ID e.g. 1"); if(!id) return; let name=prompt("Name","Customer "+id); let pin=prompt("PIN","1234"); if(name&&pin){REG.push({id:String(id),name,pin}); save();}}
 function logout(){ $('dash').style.display='none'; $('home').style.display='flex'; S.role=null; if(S.timer) clearInterval(S.timer); if(S.cli) S.cli.end(); S.nodes=[];}
 (function(){ $('topic').value=localStorage.getItem('B')||'aquasense/moses_kaaga_9x7p2'; $('ip').value=localStorage.getItem('IP')||'';})();
 </script>
