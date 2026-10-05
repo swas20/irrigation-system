@@ -1,230 +1,1971 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AQUASENSE - Live</title>
-<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>AQUASENSE Water Distribution System</title>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
 <style>
-:root{ --bg:#070b14; --p:#101828; --c:#121d33; --b:#1e2f52; --a:#00e5b0; --bl:#3b82f6; --r:#ef4444; --g:#22c55e; --y:#f59e0b; --t:#e6edf7; --m:#8a9bb5 }
-*{box-sizing:border-box;margin:0;padding:0} body{background:var(--bg);color:var(--t);font-family:ui-monospace,monospace}
-header{padding:12px 16px;background:var(--p);border-bottom:1px solid var(--b);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
-.btn{border:0;border-radius:8px;padding:9px 14px;font-weight:800;cursor:pointer}
-.btn-bl{background:var(--bl);color:#fff}.btn-a{background:var(--a);color:#000}.btn-r{background:transparent;color:var(--r);border:1px solid var(--r)}
-input{background:var(--bg);border:1px solid var(--b);color:#fff;padding:11px;border-radius:8px;width:100%;outline:none}
-.home{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 20% 30%,#0f1e38,#070b14)}
-.cardBox{background:var(--c);border:2px solid var(--a);border-radius:18px;padding:26px;width:400px;max-width:95vw;text-align:center;box-shadow:0 0 40px rgba(0,229,176,.15)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding:12px;max-width:1400px;margin:auto}
-.top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px;max-width:1400px;margin:auto}
-@media(max-width:800px){.top{grid-template-columns:1fr}}
-.card{background:var(--c);border:1.5px solid var(--b);border-radius:14px;padding:14px;position:relative;transition:.3s}
-.card.online{border-color:var(--g);box-shadow:0 0 15px rgba(34,197,94,.18)}.card.offline{border-color:var(--r);opacity:.55}
-.card.new{border-color:var(--a);box-shadow:0 0 25px rgba(0,229,176,.6);transform:scale(1.02)}.card.water{border-color:#3b82f6}
-.badge{padding:3px 9px;border-radius:20px;font-size:.65rem;font-weight:800}.open{background:rgba(0,229,176,.15);color:var(--a);border:1px solid var(--a)}.closed{background:rgba(239,68,68,.15);color:var(--r);border:1px solid var(--r)}
-.row{display:flex;justify-content:space-between;font-size:.75rem;margin:5px 0}.sGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}
-.s{background:var(--bg);border:1px solid var(--b);border-radius:9px;padding:9px;text-align:center}.s b{display:block;font-size:1.15rem}
-#dash{display:none}.dot{width:8px;height:8px;border-radius:50%;display:inline-block;animation:pulse 1.5s infinite}
-@keyframes pulse{0%{opacity:1}50%{opacity:.3}100%{opacity:1}}.tag{position:absolute;top:-8px;right:10px;background:var(--a);color:#000;font-size:.6rem;font-weight:900;padding:2px 8px;border-radius:20px;display:none}
-.card.new.tag{display:block}.empty{grid-column:1/-1;text-align:center;padding:50px;color:var(--m);border:1px dashed var(--b);border-radius:14px}
-.waterBar{height:18px;width:100%;background:#070b14;border:1px solid var(--b);border-radius:20px;overflow:hidden;margin:12px 0}.waterFill{height:100%;width:0%;background:var(--bl);transition:.5s}
-.pumpStatus{text-align:center;font-size:1.8rem;font-weight:900;margin:8px 0}.small{font-size:.65rem;color:var(--m)}
+
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+    background:#eef3f7;
+    color:#1f2937;
+}
+
+/* ================= NAVBAR ================= */
+
+.navbar{
+    background:#00695c;
+    color:white;
+    padding:15px 25px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    position:sticky;
+    top:0;
+    z-index:100;
+    box-shadow:0 3px 10px rgba(0,0,0,.2);
+}
+
+.logo{
+    font-size:22px;
+    font-weight:bold;
+}
+
+.logo span{
+    color:#80cbc4;
+}
+
+.nav-buttons{
+    display:flex;
+    gap:8px;
+}
+
+.nav-buttons button{
+    background:transparent;
+    border:1px solid rgba(255,255,255,.4);
+    color:white;
+    padding:9px 14px;
+    border-radius:7px;
+    cursor:pointer;
+}
+
+.nav-buttons button:hover{
+    background:#00897b;
+}
+
+/* ================= MAIN ================= */
+
+.container{
+    width:95%;
+    max-width:1500px;
+    margin:25px auto;
+}
+
+.page{
+    display:none;
+}
+
+.page.active{
+    display:block;
+}
+
+/* ================= HEADER ================= */
+
+.dashboard-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.dashboard-header h1{
+    color:#00695c;
+}
+
+.connection{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:white;
+    padding:9px 15px;
+    border-radius:20px;
+    box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+
+.dot{
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    background:#f44336;
+}
+
+.dot.connected{
+    background:#00c853;
+}
+
+/* ================= CARDS ================= */
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:18px;
+    margin-bottom:25px;
+}
+
+.card{
+    background:white;
+    border-radius:14px;
+    padding:20px;
+    box-shadow:0 3px 12px rgba(0,0,0,.1);
+}
+
+.card h3{
+    color:#00695c;
+    margin-bottom:12px;
+}
+
+.big-value{
+    font-size:30px;
+    font-weight:bold;
+    margin:8px 0;
+}
+
+.small{
+    font-size:13px;
+    color:#6b7280;
+}
+
+.icon{
+    font-size:30px;
+}
+
+/* ================= TANK ================= */
+
+.tank-box{
+    display:flex;
+    align-items:center;
+    gap:25px;
+}
+
+.tank{
+    width:100px;
+    height:180px;
+    border:4px solid #37474f;
+    border-radius:8px 8px 18px 18px;
+    position:relative;
+    overflow:hidden;
+    background:#e0f2f1;
+}
+
+.water{
+    position:absolute;
+    bottom:0;
+    width:100%;
+    background:#2196f3;
+    transition:height .7s;
+}
+
+.tank-percent{
+    font-size:28px;
+    font-weight:bold;
+}
+
+/* ================= PUMP ================= */
+
+.pump-status{
+    display:inline-block;
+    padding:8px 15px;
+    border-radius:20px;
+    font-weight:bold;
+}
+
+.pump-on{
+    background:#c8e6c9;
+    color:#1b5e20;
+}
+
+.pump-off{
+    background:#ffcdd2;
+    color:#b71c1c;
+}
+
+button{
+    border:none;
+    padding:10px 15px;
+    border-radius:7px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.btn-green{
+    background:#00a884;
+    color:white;
+}
+
+.btn-red{
+    background:#e53935;
+    color:white;
+}
+
+.btn-blue{
+    background:#1976d2;
+    color:white;
+}
+
+.btn-gray{
+    background:#607d8b;
+    color:white;
+}
+
+button:hover{
+    opacity:.85;
+}
+
+/* ================= NODE ================= */
+
+.nodes-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
+    gap:20px;
+}
+
+.node-card{
+    background:white;
+    border-radius:15px;
+    padding:20px;
+    box-shadow:0 3px 12px rgba(0,0,0,.12);
+    border-top:5px solid #00695c;
+}
+
+.node-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:15px;
+}
+
+.node-title h2{
+    color:#00695c;
+}
+
+.status{
+    padding:6px 10px;
+    border-radius:15px;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.online{
+    background:#c8e6c9;
+    color:#1b5e20;
+}
+
+.offline{
+    background:#ffcdd2;
+    color:#b71c1c;
+}
+
+.node-data{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:15px;
+}
+
+.data-box{
+    background:#f5f7f9;
+    padding:12px;
+    border-radius:9px;
+}
+
+.data-label{
+    font-size:12px;
+    color:#6b7280;
+}
+
+.data-value{
+    font-size:18px;
+    font-weight:bold;
+    margin-top:4px;
+}
+
+.valve-section{
+    border-top:1px solid #ddd;
+    margin-top:15px;
+    padding-top:15px;
+}
+
+.valve-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#f5f7f9;
+    padding:12px;
+    margin-bottom:10px;
+    border-radius:8px;
+}
+
+.valve-state{
+    font-weight:bold;
+    padding:5px 10px;
+    border-radius:15px;
+    font-size:12px;
+}
+
+.valve-open{
+    background:#c8e6c9;
+    color:#1b5e20;
+}
+
+.valve-closed{
+    background:#ffcdd2;
+    color:#b71c1c;
+}
+
+.valve-buttons{
+    display:flex;
+    gap:6px;
+}
+
+.valve-buttons button{
+    padding:7px 9px;
+    font-size:12px;
+}
+
+/* ================= SECTION ================= */
+
+.section-title{
+    margin:25px 0 15px;
+    color:#00695c;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+/* ================= LOGIN ================= */
+
+.login-container{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg,#00695c,#26a69a);
+}
+
+.login-box{
+    background:white;
+    width:95%;
+    max-width:420px;
+    padding:35px;
+    border-radius:15px;
+    box-shadow:0 8px 30px rgba(0,0,0,.25);
+}
+
+.login-box h1{
+    text-align:center;
+    color:#00695c;
+    margin-bottom:8px;
+}
+
+.login-box p{
+    text-align:center;
+    color:#777;
+    margin-bottom:25px;
+}
+
+.input-group{
+    margin-bottom:15px;
+}
+
+.input-group label{
+    display:block;
+    margin-bottom:6px;
+    font-weight:bold;
+}
+
+.input-group input{
+    width:100%;
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:7px;
+}
+
+.login-btn{
+    width:100%;
+    background:#00695c;
+    color:white;
+    padding:13px;
+}
+
+.login-message{
+    text-align:center;
+    margin-top:12px;
+    color:#d32f2f;
+}
+
+/* ================= HOME ================= */
+
+.hero{
+    background:linear-gradient(135deg,#00695c,#26a69a);
+    color:white;
+    padding:70px 30px;
+    border-radius:15px;
+    text-align:center;
+}
+
+.hero h1{
+    font-size:45px;
+    margin-bottom:15px;
+}
+
+.hero p{
+    font-size:18px;
+    max-width:800px;
+    margin:auto;
+    line-height:1.7;
+}
+
+.info-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:20px;
+    margin-top:25px;
+}
+
+.info-card{
+    background:white;
+    padding:25px;
+    border-radius:12px;
+    box-shadow:0 3px 12px rgba(0,0,0,.1);
+}
+
+.info-card h2{
+    color:#00695c;
+    margin-bottom:10px;
+}
+
+/* ================= FOOTER ================= */
+
+footer{
+    background:#263238;
+    color:white;
+    text-align:center;
+    padding:25px;
+    margin-top:40px;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media(max-width:700px){
+
+    .navbar{
+        flex-direction:column;
+        gap:12px;
+    }
+
+    .nav-buttons{
+        flex-wrap:wrap;
+        justify-content:center;
+    }
+
+    .hero h1{
+        font-size:32px;
+    }
+
+    .nodes-grid{
+        grid-template-columns:1fr;
+    }
+
+}
+
 </style>
 </head>
+
 <body>
 
-<div id="home" class="home">
-  <div class="cardBox">
-    <h2 style="color:var(--a);letter-spacing:2px">AQUASENSE</h2>
-    <div style="font-size:.65rem;color:var(--m);margin:10px 0">Auto Live - Master: <b>aquasense/moses_kaaga_9x7p2</b><br>admin/1234 = ALL | ID/PIN = OWN</div>
-    <input id="uid" placeholder="ID - admin or 1"><input id="pwd" type="password" placeholder="PIN - 1234" style="margin-top:8px">
-    <button class="btn btn-a" style="width:100%;margin-top:12px" onclick="login()">LOGIN & AUTO-CONNECT</button>
-    <input id="topic" value="aquasense/moses_kaaga_9x7p2" style="margin-top:10px;font-size:.7rem">
-    <input id="ip" placeholder="Master IP optional (http://192.168.x.x)" style="margin-top:6px;font-size:.7rem">
-    <div id="msg" style="color:var(--r);font-size:.7rem;margin-top:8px"></div>
-    <div id="connStatus" style="font-size:.65rem;color:var(--m);margin-top:8px">MQTT: Disconnected</div>
-  </div>
+<!-- =====================================================
+     LOGIN PAGE
+===================================================== -->
+
+<div id="loginPage" class="login-container">
+
+<div class="login-box">
+
+<h1>💧 AQUASENSE</h1>
+
+<p>Smart Water Distribution System</p>
+
+<div class="input-group">
+
+<label>Username</label>
+
+<input
+type="text"
+id="username"
+placeholder="Enter username">
+
 </div>
 
-<div id="dash">
-<header>
-  <div><b id="title" style="color:var(--a)">DASHBOARD</b><span id="live" style="font-size:.7rem;color:var(--m);margin-left:10px"></span></div>
-  <div style="display:flex;gap:6px;align-items:center">
-    <span id="mqttDot" style="font-size:.7rem"><span class="dot" style="background:var(--r)"></span> <span id="mqttTxt">OFFLINE</span></span>
-    <button class="btn btn-r" onclick="logout()">LOGOUT</button>
-  </div>
-</header>
-<div id="top" class="top"></div>
-<div id="grid" class="grid"></div>
+<div class="input-group">
+
+<label>Password</label>
+
+<input
+type="password"
+id="password"
+placeholder="Enter password">
+
 </div>
+
+<button
+class="login-btn"
+onclick="login()">
+
+LOGIN
+
+</button>
+
+<div id="loginMessage"
+class="login-message">
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     MAIN APPLICATION
+===================================================== -->
+
+<div id="mainApp" style="display:none">
+
+<!-- NAVBAR -->
+
+<nav class="navbar">
+
+<div class="logo">
+💧 AQUASENSE <span>WATER MANAGEMENT</span>
+</div>
+
+<div class="nav-buttons">
+
+<button onclick="showPage('homePage')">
+Home
+</button>
+
+<button onclick="showPage('dashboardPage')">
+Dashboard
+</button>
+
+<button onclick="showPage('aboutPage')">
+About
+</button>
+
+<button onclick="logout()">
+Logout
+</button>
+
+</div>
+
+</nav>
+
+
+<div class="container">
+
+
+<!-- =====================================================
+     HOME
+===================================================== -->
+
+<section id="homePage" class="page active">
+
+<div class="hero">
+
+<h1>💧 AQUASENSE</h1>
+
+<p>
+Smart Water Distribution System for efficient,
+automated and intelligent management of water
+distribution, monitoring and control.
+</p>
+
+</div>
+
+<div class="info-grid">
+
+<div class="info-card">
+
+<h2>🎯 Vision</h2>
+
+<p>
+To provide intelligent and sustainable water
+distribution through automation and real-time
+monitoring.
+</p>
+
+</div>
+
+<div class="info-card">
+
+<h2>🚀 Mission</h2>
+
+<p>
+To reduce water losses, improve distribution
+efficiency and provide reliable monitoring and
+control of water systems.
+</p>
+
+</div>
+
+<div class="info-card">
+
+<h2>💡 Innovation</h2>
+
+<p>
+AQUASENSE combines LoRa communication,
+flow monitoring, automatic valves, tank-level
+monitoring, pump control and cloud monitoring.
+</p>
+
+</div>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+     DASHBOARD
+===================================================== -->
+
+<section id="dashboardPage" class="page">
+
+<div class="dashboard-header">
+
+<div>
+
+<h1>AQUASENSE Dashboard</h1>
+
+<p class="small">
+Real-time water distribution monitoring and control
+</p>
+
+</div>
+
+<div class="connection">
+
+<div id="mqttDot" class="dot"></div>
+
+<span id="mqttStatus">
+MQTT Disconnected
+</span>
+
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     MASTER CARDS
+===================================================== -->
+
+<div class="grid">
+
+
+<!-- WATER LEVEL -->
+
+<div class="card">
+
+<div class="icon">💧</div>
+
+<h3>Tank Water Level</h3>
+
+<div
+id="waterLevelPercent"
+class="big-value">
+0 %
+</div>
+
+<div class="small">
+Water height:
+<span id="waterLevelCm">0</span> cm
+</div>
+
+<div class="small">
+Ultrasonic distance:
+<span id="waterDistance">0</span> cm
+</div>
+
+</div>
+
+
+<!-- PUMP -->
+
+<div class="card">
+
+<div class="icon">🚰</div>
+
+<h3>Pump</h3>
+
+<div
+id="pumpStatus"
+class="pump-status pump-off">
+OFF
+</div>
+
+<br><br>
+
+<button
+class="btn-green"
+onclick="pumpCommand('on')">
+PUMP ON
+</button>
+
+<button
+class="btn-red"
+onclick="pumpCommand('off')">
+PUMP OFF
+</button>
+
+</div>
+
+
+<!-- MASTER FLOW -->
+
+<div class="card">
+
+<div class="icon">🌊</div>
+
+<h3>Master Flow</h3>
+
+<div
+id="masterFlow"
+class="big-value">
+0 L/min
+</div>
+
+<div class="small">
+Total:
+<span id="masterTotal">0</span> L
+</div>
+
+</div>
+
+
+<!-- TANK HEIGHT -->
+
+<div class="card">
+
+<div class="icon">📏</div>
+
+<h3>Tank Capacity</h3>
+
+<div
+id="tankHeight"
+class="big-value">
+125 cm
+</div>
+
+<div class="small">
+Configured tank height
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     TANK VISUAL
+===================================================== -->
+
+<div class="card">
+
+<h3>🛢️ Tank Level</h3>
+
+<div class="tank-box">
+
+<div class="tank">
+
+<div
+id="waterVisual"
+class="water"
+style="height:0%">
+</div>
+
+</div>
+
+<div>
+
+<div
+id="tankVisualPercent"
+class="tank-percent">
+0%
+</div>
+
+<p class="small">
+Real-time ultrasonic measurement
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     CUSTOMER NODES
+===================================================== -->
+
+<div class="section-title">
+
+<h2>👥 Customer Nodes</h2>
+
+<div>
+
+<span class="small">
+Total Nodes:
+</span>
+
+<strong id="nodeCount">
+0
+</strong>
+
+</div>
+
+</div>
+
+
+<div
+id="nodesContainer"
+class="nodes-grid">
+
+<!-- Nodes inserted here -->
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+     ABOUT
+===================================================== -->
+
+<section id="aboutPage" class="page">
+
+<div class="hero">
+
+<h1>About AQUASENSE</h1>
+
+<p>
+A smart water distribution and monitoring platform
+designed to improve water management using
+automation, sensors, LoRa communication and
+cloud connectivity.
+</p>
+
+</div>
+
+<div class="info-grid">
+
+<div class="info-card">
+
+<h2>🌊 Water Monitoring</h2>
+
+<p>
+Monitor flow rate, total water consumption and
+water distribution in real time.
+</p>
+
+</div>
+
+<div class="info-card">
+
+<h2>📡 LoRa Communication</h2>
+
+<p>
+Customer nodes communicate with the master
+controller through long-range LoRa communication.
+</p>
+
+</div>
+
+<div class="info-card">
+
+<h2>⚙️ Automated Control</h2>
+
+<p>
+The system controls water valves and the main
+pump according to system conditions.
+</p>
+
+</div>
+
+<div class="info-card">
+
+<h2>📊 Remote Dashboard</h2>
+
+<p>
+The dashboard provides real-time monitoring and
+control through MQTT communication.
+</p>
+
+</div>
+
+</div>
+
+</section>
+
+
+</div>
+
+
+<footer>
+
+<p>
+AQUASENSE WATER DISTRIBUTION SYSTEM
+</p>
+
+<p style="margin-top:8px">
+Smart Water Management • LoRa • IoT • Automation
+</p>
+
+</footer>
+
+</div>
+
 
 <script>
-const $ = s => document.getElementById(s);
-const MQTT_BROKER_WSS = 'wss://broker.hivemq.com:8884/mqtt';
 
-let S = {
-  nodes: [], base: '', cli: null, role: null, cur: null, last: 0,
-  statusTimer: null, ip: '',
-  water: { distance: 0, levelCm: 0, percent: 0, pump: 'OFF', pumpState: false, pumpOnLevel: 30, pumpOffLevel: 90 }
-};
+/* =====================================================
+   AQUASENSE CONFIGURATION
+===================================================== */
 
-let REG = JSON.parse(localStorage.getItem('REG') || '[]');
-if(!REG.length){
-  REG = [{id:'1',name:'Customer 1',pin:'1234'},{id:'2',name:'Customer 2',pin:'2345'},{id:'3',name:'Customer 3',pin:'3456'},{id:'4',name:'Customer 4',pin:'4567'}];
-  localStorage.setItem('REG', JSON.stringify(REG));
-}
+const MQTT_BROKER =
+"wss://broker.hivemq.com:8884/mqtt";
 
-function isOnline(n){ return n.online!== false && (Date.now() - n._ms) < 70000; }
+const MQTT_LIVE_TOPIC =
+"aquasense/moses_kaaga_9x7p2/live";
 
-function mergePayload(d){
-  if(!d) return;
-  // WATER - exact keys from Master
-  if(d.waterDistance!== undefined) S.water.distance = Number(d.waterDistance);
-  if(d.waterLevelCm!== undefined) S.water.levelCm = Number(d.waterLevelCm);
-  if(d.waterLevelPercent!== undefined) S.water.percent = Number(d.waterLevelPercent);
-  if(d.pump!== undefined){ S.water.pump = String(d.pump).toUpperCase(); S.water.pumpState = S.water.pump === 'ON'; }
-  if(d.pumpState!== undefined){ S.water.pumpState = Boolean(d.pumpState); S.water.pump = S.water.pumpState? 'ON' : 'OFF'; }
-  if(d.pumpOnLevel!== undefined) S.water.pumpOnLevel = Number(d.pumpOnLevel);
-  if(d.pumpOffLevel!== undefined) S.water.pumpOffLevel = Number(d.pumpOffLevel);
+const MQTT_CMD_TOPIC =
+"aquasense/moses_kaaga_9x7p2/cmd";
 
-  if(!d.nodes ||!Array.isArray(d.nodes)){ render(); return; }
 
-  d.nodes.forEach(o=>{
-    let id = String(o.id).trim(); if(id=='0') return;
-    let ex = S.nodes.find(x=>x.id==id);
-    let obj = {
-      id, flow: Number(o.flow||0), total: Number(o.total||0),
-      m1: Number(o.m1?? o.moist1?? 0), m2: Number(o.m2?? o.moist2?? 0),
-      t: Number(o.temp||0), h: Number(o.hum||0),
-      valve: (o.valve||'UNKNOWN').toUpperCase(), rssi: Number(o.rssi||0),
-      online: o.online!== false, _ms: Date.now(), isNew:!ex
-    };
-    if(ex){
-      if(ex.flow!= obj.flow || ex.total!= obj.total || ex.valve!= obj.valve) obj.isNew = true;
-      Object.assign(ex, obj);
-    } else { S.nodes.push(obj); }
-    if(!REG.find(r=>r.id==id)){ REG.push({id, name:'Customer '+id, pin:'1234'}); localStorage.setItem('REG', JSON.stringify(REG)); }
-  });
-  S.last = Date.now(); render();
-  setTimeout(()=>{ S.nodes.forEach(n=>n.isNew=false); render(); }, 3000);
-}
-
-function waterHTML(){
-  let p = Math.max(0, Math.min(100, S.water.percent));
-  let pumpOn = S.water.pumpState;
-  let status = p <= S.water.pumpOnLevel? 'LOW - PUMP SHOULD RUN' : p >= S.water.pumpOffLevel? 'HIGH - PUMP SHOULD STOP' : 'NORMAL';
-  return `<div class="card water ${pumpOn?'online':'offline'}">
-    <div style="display:flex;justify-content:space-between;align-items:center"><div><div class="small">WATER TANK</div><div style="font-size:1.4rem;font-weight:900">ULTRASONIC LEVEL</div></div><div style="font-size:2rem">💧</div></div>
-    <div style="text-align:center;margin-top:12px"><div style="font-size:2.8rem;font-weight:900;color:var(--bl)">${p.toFixed(1)}%</div><div class="small">${S.water.levelCm.toFixed(1)} cm water depth</div></div>
-    <div class="waterBar"><div class="waterFill" style="width:${p}%"></div></div>
-    <div class="sGrid">
-      <div class="s"><span style="font-size:.55rem">SENSOR DISTANCE</span><b>${S.water.distance.toFixed(1)} cm</b></div>
-      <div class="s"><span style="font-size:.55rem">WATER LEVEL</span><b>${S.water.levelCm.toFixed(1)} cm</b></div>
-      <div class="s"><span style="font-size:.55rem">PUMP ON</span><b>≤ ${S.water.pumpOnLevel}%</b></div>
-      <div class="s"><span style="font-size:.55rem">PUMP OFF</span><b>≥ ${S.water.pumpOffLevel}%</b></div>
-    </div>
-    <div style="text-align:center;margin:8px 0;color:${pumpOn?'var(--g)':'var(--r)'};font-size:.75rem;font-weight:900">${status}</div>
-    <div class="pumpStatus" style="color:${pumpOn?'var(--g)':'var(--r)'}">🚰 PUMP ${pumpOn?'ON':'OFF'}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><button class="btn btn-a" onclick="sendPump('on')">PUMP ON</button><button class="btn btn-r" onclick="sendPump('off')">PUMP OFF</button></div>
-    <div class="small" style="text-align:center;margin-top:9px">Auto: ON ≤ ${S.water.pumpOnLevel}% | OFF ≥ ${S.water.pumpOffLevel}%</div>
-  </div>`;
-}
-
-function cardHTML(n){
-  let r = REG.find(x=>x.id==n.id) || {name:'Customer '+n.id};
-  let on = isOnline(n); let vClass = n.valve.includes('OPEN')? 'open' : 'closed';
-  return `<div class="card ${on?'online':'offline'} ${n.isNew?'new':''}">
-    <div class="tag">● UPDATED</div>
-    <div class="row"><b>C${n.id} - ${r.name}</b><span style="font-size:.6rem;color:${on?'var(--g)':'var(--r)'}"><span class="dot" style="background:${on?'var(--g)':'var(--r)'}"></span> ${on?'ONLINE':'OFFLINE'} • ${n.rssi}dBm • ${Math.round((Date.now()-n._ms)/1000)}s</span></div>
-    <div style="text-align:center;margin:10px 0"><div style="font-size:2.2rem;font-weight:900;color:${on?'var(--a)':'var(--m)'}">${n.total.toFixed(1)}L</div><div style="font-size:.7rem">${n.flow.toFixed(2)} L/min • ${(n.total/1000).toFixed(3)} m³</div></div>
-    <div class="sGrid"><div class="s"><span style="font-size:.55rem">MOIST 1</span><b>${n.m1.toFixed(0)}%</b></div><div class="s"><span style="font-size:.55rem">MOIST 2</span><b>${n.m2.toFixed(0)}%</b></div><div class="s"><span style="font-size:.55rem">TEMP</span><b>${n.t.toFixed(1)}°C</b></div><div class="s"><span style="font-size:.55rem">HUM</span><b>${n.h.toFixed(0)}%</b></div></div>
-    <div class="row"><span>VALVE</span><b class="badge ${vClass}">${n.valve}</b></div>
-    <div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-a" style="flex:1" onclick="sendCmd('${n.id}','open')">OPEN</button><button class="btn btn-r" style="flex:1" onclick="sendCmd('${n.id}','close')">CLOSE</button></div>
-  </div>`;
-}
-
-function render(){
-  let all = [...S.nodes].sort((a,b)=>Number(a.id)-Number(b.id));
-  let onlineNodes = all.filter(n=>isOnline(n));
-  let tot = onlineNodes.reduce((a,b)=>a+b.total,0);
-  let flow = onlineNodes.reduce((a,b)=>a+b.flow,0);
-  $('live').textContent = `${onlineNodes.length}/${all.length} ONLINE | ${tot.toFixed(1)}L | Last: ${S.last? new Date(S.last).toLocaleTimeString() : ''}`;
-  if(S.role==='admin'){
-    $('title').textContent = `ADMIN AUTO-LIVE (${onlineNodes.length}/${all.length})`;
-    $('top').innerHTML = waterHTML() + `<div class="card online"><div style="font-size:.6rem;color:var(--m)">ONLINE / TOTAL</div><div style="font-size:2rem;font-weight:900;color:var(--g)">${onlineNodes.length}/${all.length}</div></div><div class="card"><div style="font-size:.6rem;color:var(--m)">WATER USED</div><div style="font-size:2rem;font-weight:900;color:var(--a)">${tot.toFixed(1)}L</div></div><div class="card"><div style="font-size:.6rem;color:var(--m)">FLOW</div><div style="font-size:2rem;font-weight:900">${flow.toFixed(2)} L/min</div></div>`;
-    $('grid').innerHTML = all.length? all.map(n=>cardHTML(n)).join('') : `<div class="empty">⏳ Waiting for Master<br>Topic: <b>${S.base}/live</b></div>`;
-  } else {
-    let n = S.nodes.find(x=>x.id==S.cur);
-    $('top').innerHTML = waterHTML();
-    $('grid').innerHTML =!n? `<div class="empty">Node C${S.cur} OFFLINE<br>Will auto-appear when LoRa packet for ID ${S.cur} arrives</div>` : cardHTML(n);
-  }
-}
-
-function sendCmd(id, action){
-  let payload = JSON.stringify({node:String(id), action});
-  if(S.cli && S.cli.connected) S.cli.publish(S.base+'/cmd', payload, {qos:1});
-  if(S.ip && location.protocol!=='https:'){
-    let url = S.ip.startsWith('http')? S.ip : `http://${S.ip}`;
-    fetch(`${url}/valve?node=${id}&action=${action}`).catch(()=>{});
-  }
-  let n = S.nodes.find(x=>x.id==id); if(n){ n.valve = action.toUpperCase(); n.isNew=true; render(); setTimeout(()=>{n.isNew=false; render();},2000); }
-}
-
-function sendPump(action){
-  action = action.toLowerCase(); if(action!=='on' && action!=='off') return;
-  let payload = JSON.stringify({pump:action});
-  if(S.cli && S.cli.connected) S.cli.publish(S.base+'/cmd', payload, {qos:1});
-  if(S.ip && location.protocol!== 'https:'){
-    let url = S.ip.startsWith('http')? S.ip : `http://${S.ip}`;
-    fetch(`${url}/pump?action=${action}`).catch(()=>{});
-  }
-  S.water.pumpState = action === 'on'; S.water.pump = S.water.pumpState? 'ON' : 'OFF'; render();
-}
-
-function setMqttStatus(online, text){
-  $('mqttTxt').textContent = text; $('connStatus').textContent = 'MQTT: '+text;
-  $('connStatus').style.color = online? 'var(--g)' : 'var(--r)';
-  let dot = document.querySelector('#mqttDot.dot'); if(dot) dot.style.background = online? 'var(--g)' : 'var(--r)';
-}
-
-function connectMQTT(){
-  S.base = $('topic').value.trim() || 'aquasense/moses_kaaga_9x7p2';
-  S.ip = $('ip').value.trim().replace(/\/$/,'');
-  localStorage.setItem('AQUA_BASE', S.base); localStorage.setItem('AQUA_IP', S.ip);
-  try{ if(S.cli) S.cli.end(); }catch(e){}
-  setMqttStatus(false, 'Connecting '+MQTT_BROKER_WSS);
-  S.cli = mqtt.connect(MQTT_BROKER_WSS, { clientId:'aqua_'+Math.random().toString(16).slice(2,10), keepalive:30, clean:true, reconnectPeriod:2000 });
-  S.cli.on('connect', ()=>{
-    setMqttStatus(true, 'Connected - AUTO LIVE ON');
-    S.cli.subscribe(S.base+'/live', {qos:1}, err=>console.log(err? 'SUB FAIL' : 'SUB OK '+S.base+'/live'));
-    if(S.statusTimer) clearInterval(S.statusTimer);
-    S.statusTimer = setInterval(render, 2000);
-  });
-  S.cli.on('message', (t,m)=>{
-    if(t === S.base+'/live'){
-      try{ mergePayload(JSON.parse(m.toString())); }catch(e){ console.error('JSON ERROR', e); }
-    }
-  });
-  S.cli.on('close', ()=> setMqttStatus(false, 'RECONNECTING...'));
-  S.cli.on('error', (e)=> console.error('MQTT ERR', e));
-}
+/* =====================================================
+   LOGIN
+===================================================== */
 
 function login(){
-  let u = $('uid').value.trim().toLowerCase(); let p = $('pwd').value.trim();
-  S.base = $('topic').value.trim();
-  if(u === 'admin' && p === '1234'){ S.role='admin'; $('home').style.display='none'; $('dash').style.display='block'; connectMQTT(); return; }
-  let f = REG.find(x=> x.id==u && x.pin==p);
-  if(f){ S.role='customer'; S.cur=u; $('home').style.display='none'; $('dash').style.display='block'; connectMQTT(); return; }
-  $('msg').textContent = 'Wrong - use admin/1234 or ID/PIN';
+
+const username =
+document.getElementById("username").value.trim();
+
+const password =
+document.getElementById("password").value.trim();
+
+
+/*
+   Default dashboard login
+
+   Username:
+   aquasense
+
+   Password:
+   irrigation2026
+*/
+
+if(
+username === "aquasense" &&
+password === "irrigation2026"
+){
+
+document.getElementById("loginPage")
+.style.display = "none";
+
+document.getElementById("mainApp")
+.style.display = "block";
+
+connectMQTT();
+
 }
+
+else{
+
+document.getElementById("loginMessage")
+.innerText =
+"Invalid username or password.";
+
+}
+
+}
+
+
+/* =====================================================
+   LOGOUT
+===================================================== */
+
 function logout(){
-  $('dash').style.display='none'; $('home').style.display='flex'; S.role=null; S.nodes=[];
-  if(S.statusTimer) clearInterval(S.statusTimer);
-  if(S.cli) try{S.cli.end();}catch(e){}
+
+if(mqttClient){
+
+try{
+mqttClient.end();
+}catch(e){}
+
 }
-(function(){
-  $('topic').value = localStorage.getItem('AQUA_BASE') || 'aquasense/moses_kaaga_9x7p2';
-  $('ip').value = localStorage.getItem('AQUA_IP') || '';
-})();
+
+document.getElementById("mainApp")
+.style.display = "none";
+
+document.getElementById("loginPage")
+.style.display = "flex";
+
+document.getElementById("username").value="";
+document.getElementById("password").value="";
+
+}
+
+
+/* =====================================================
+   PAGE NAVIGATION
+===================================================== */
+
+function showPage(pageId){
+
+document
+.querySelectorAll(".page")
+.forEach(page => {
+
+page.classList.remove("active");
+
+});
+
+document
+.getElementById(pageId)
+.classList.add("active");
+
+}
+
+
+/* =====================================================
+   MQTT
+===================================================== */
+
+let mqttClient = null;
+
+let reconnectTimer = null;
+
+
+function connectMQTT(){
+
+if(mqttClient){
+
+try{
+mqttClient.end(true);
+}catch(e){}
+
+}
+
+setMQTTStatus(
+"Connecting...",
+false
+);
+
+
+const clientId =
+"AquaSenseWeb_" +
+Math.random()
+.toString(16)
+.substring(2,10);
+
+
+mqttClient =
+mqtt.connect(
+MQTT_BROKER,
+{
+
+clientId:clientId,
+
+clean:true,
+
+connectTimeout:10000,
+
+reconnectPeriod:5000,
+
+keepalive:60
+
+});
+
+
+mqttClient.on(
+"connect",
+function(){
+
+console.log(
+"MQTT connected"
+);
+
+setMQTTStatus(
+"MQTT Connected",
+true
+);
+
+mqttClient.subscribe(
+MQTT_LIVE_TOPIC,
+function(error){
+
+if(error){
+
+console.error(
+"Subscribe error:",
+error
+);
+
+}
+
+else{
+
+console.log(
+"Subscribed:",
+MQTT_LIVE_TOPIC
+);
+
+}
+
+});
+
+});
+
+
+mqttClient.on(
+"message",
+function(topic,message){
+
+if(topic !== MQTT_LIVE_TOPIC){
+
+return;
+
+}
+
+try{
+
+const text =
+message.toString();
+
+console.log(
+"MQTT LIVE:",
+text
+);
+
+const data =
+JSON.parse(text);
+
+updateDashboard(data);
+
+}
+
+catch(error){
+
+console.error(
+"Invalid MQTT JSON:",
+error
+);
+
+}
+
+});
+
+
+mqttClient.on(
+"reconnect",
+function(){
+
+setMQTTStatus(
+"Reconnecting...",
+false
+);
+
+});
+
+
+mqttClient.on(
+"offline",
+function(){
+
+setMQTTStatus(
+"MQTT Offline",
+false
+);
+
+});
+
+
+mqttClient.on(
+"error",
+function(error){
+
+console.error(
+"MQTT error:",
+error
+);
+
+setMQTTStatus(
+"MQTT Error",
+false
+);
+
+});
+
+
+mqttClient.on(
+"close",
+function(){
+
+setMQTTStatus(
+"MQTT Disconnected",
+false
+);
+
+});
+
+}
+
+
+/* =====================================================
+   MQTT STATUS
+===================================================== */
+
+function setMQTTStatus(
+text,
+connected
+){
+
+document
+.getElementById("mqttStatus")
+.innerText = text;
+
+const dot =
+document.getElementById("mqttDot");
+
+if(connected){
+
+dot.classList.add(
+"connected"
+);
+
+}
+
+else{
+
+dot.classList.remove(
+"connected"
+);
+
+}
+
+}
+
+
+/* =====================================================
+   SEND MQTT COMMAND
+===================================================== */
+
+function sendCommand(command){
+
+if(
+!mqttClient ||
+!mqttClient.connected
+){
+
+alert(
+"MQTT is not connected."
+);
+
+return;
+
+}
+
+
+mqttClient.publish(
+MQTT_CMD_TOPIC,
+JSON.stringify(command),
+{
+qos:0,
+retain:false
+}
+);
+
+console.log(
+"COMMAND:",
+command
+);
+
+}
+
+
+/* =====================================================
+   PUMP CONTROL
+===================================================== */
+
+function pumpCommand(state){
+
+sendCommand({
+
+pump:state
+
+});
+
+}
+
+
+/* =====================================================
+   VALVE CONTROL
+===================================================== */
+
+function valveCommand(
+node,
+action
+){
+
+sendCommand({
+
+node:String(node),
+
+action:action
+
+});
+
+}
+
+
+/* =====================================================
+   DASHBOARD UPDATE
+===================================================== */
+
+function updateDashboard(data){
+
+console.log(
+"Dashboard data:",
+data
+);
+
+
+/* =========================
+   WATER DISTANCE
+========================= */
+
+const distance =
+Number(data.waterDistance || 0);
+
+document
+.getElementById("waterDistance")
+.innerText =
+distance.toFixed(1);
+
+
+/* =========================
+   WATER LEVEL CM
+========================= */
+
+const levelCm =
+Number(data.waterLevelCm || 0);
+
+document
+.getElementById("waterLevelCm")
+.innerText =
+levelCm.toFixed(1);
+
+
+/* =========================
+   WATER LEVEL %
+========================= */
+
+let levelPercent =
+Number(data.waterLevelPercent || 0);
+
+if(levelPercent < 0)
+levelPercent = 0;
+
+if(levelPercent > 100)
+levelPercent = 100;
+
+
+document
+.getElementById("waterLevelPercent")
+.innerText =
+levelPercent.toFixed(1) + " %";
+
+
+document
+.getElementById("tankVisualPercent")
+.innerText =
+levelPercent.toFixed(1) + "%";
+
+
+document
+.getElementById("waterVisual")
+.style.height =
+levelPercent + "%";
+
+
+/* =========================
+   TANK HEIGHT
+========================= */
+
+if(data.tankHeight !== undefined){
+
+document
+.getElementById("tankHeight")
+.innerText =
+Number(data.tankHeight)
+.toFixed(0) + " cm";
+
+}
+
+
+/* =========================
+   PUMP
+========================= */
+
+let pumpState =
+data.pumpState ||
+data.pump ||
+"OFF";
+
+pumpState =
+String(pumpState)
+.toUpperCase();
+
+
+const pumpElement =
+document.getElementById(
+"pumpStatus"
+);
+
+if(
+pumpState === "ON" ||
+pumpState === "1" ||
+pumpState === "TRUE"
+){
+
+pumpElement.innerText =
+"ON";
+
+pumpElement.className =
+"pump-status pump-on";
+
+}
+
+else{
+
+pumpElement.innerText =
+"OFF";
+
+pumpElement.className =
+"pump-status pump-off";
+
+}
+
+
+/* =========================
+   MASTER FLOW
+========================= */
+
+const masterFlow =
+Number(data.masterFlow || 0);
+
+document
+.getElementById("masterFlow")
+.innerText =
+masterFlow.toFixed(2) +
+" L/min";
+
+
+/* =========================
+   MASTER TOTAL
+========================= */
+
+const masterTotal =
+Number(data.masterTotal || 0);
+
+document
+.getElementById("masterTotal")
+.innerText =
+masterTotal.toFixed(2);
+
+
+/* =========================
+   NODES
+========================= */
+
+const nodes =
+Array.isArray(data.nodes)
+? data.nodes
+: [];
+
+
+document
+.getElementById("nodeCount")
+.innerText =
+nodes.length;
+
+
+renderNodes(nodes);
+
+}
+
+
+/* =====================================================
+   RENDER CUSTOMER NODES
+===================================================== */
+
+function renderNodes(nodes){
+
+const container =
+document.getElementById(
+"nodesContainer"
+);
+
+container.innerHTML = "";
+
+
+if(nodes.length === 0){
+
+container.innerHTML = `
+
+<div class="card">
+
+<h3>No Customer Nodes</h3>
+
+<p class="small">
+Waiting for LoRa customer nodes...
+</p>
+
+</div>
+
+`;
+
+return;
+
+}
+
+
+nodes.forEach(node => {
+
+const id =
+node.id || "--";
+
+
+const flow =
+Number(node.flow || 0);
+
+
+const total =
+Number(node.total || 0);
+
+
+const m1 =
+Number(node.m1 || 0);
+
+
+const m2 =
+Number(node.m2 || 0);
+
+
+const temp =
+Number(node.temp || 0);
+
+
+const hum =
+Number(node.hum || 0);
+
+
+const rssi =
+Number(node.rssi || 0);
+
+
+const online =
+node.online === true;
+
+
+const valve1 =
+normalizeValve(
+node.valve1
+);
+
+
+const valve2 =
+normalizeValve(
+node.valve2
+);
+
+
+const card =
+document.createElement(
+"div"
+);
+
+card.className =
+"node-card";
+
+
+card.innerHTML = `
+
+<div class="node-title">
+
+<h2>
+👤 Node ${escapeHTML(id)}
+</h2>
+
+<span class="status ${
+online
+? "online"
+: "offline"
+}">
+${
+online
+? "ONLINE"
+: "OFFLINE"
+}
+</span>
+
+</div>
+
+
+<div class="node-data">
+
+
+<div class="data-box">
+
+<div class="data-label">
+Flow Rate
+</div>
+
+<div class="data-value">
+${flow.toFixed(2)} L/min
+</div>
+
+</div>
+
+
+<div class="data-box">
+
+<div class="data-label">
+Total Water
+</div>
+
+<div class="data-value">
+${total.toFixed(2)} L
+</div>
+
+</div>
+
+
+<div class="data-box">
+
+<div class="data-label">
+Soil Moisture 1
+</div>
+
+<div class="data-value">
+${m1.toFixed(0)} %
+</div>
+
+</div>
+
+
+<div class="data-box">
+
+<div class="data-label">
+Soil Moisture 2
+</div>
+
+<div class="data-value">
+${m2.toFixed(0)} %
+</div>
+
+</div>
+
+
+<div class="data-box">
+
+<div class="data-label">
+Temperature
+</div>
+
+<div class="data-value">
+${temp.toFixed(1)} °C
+</div>
+
+</div>
+
+
+<div class="data-box">
+
+<div class="data-label">
+Humidity
+</div>
+
+<div class="data-value">
+${hum.toFixed(1)} %
+</div>
+
+</div>
+
+
+<div class="data-box">
+
+<div class="data-label">
+LoRa Signal
+</div>
+
+<div class="data-value">
+${rssi} dBm
+</div>
+
+</div>
+
+
+<div class="data-box">
+
+<div class="data-label">
+Node ID
+</div>
+
+<div class="data-value">
+${escapeHTML(id)}
+</div>
+
+</div>
+
+
+</div>
+
+
+<div class="valve-section">
+
+
+<h3>
+⚙️ Valve Control
+</h3>
+
+
+<div class="valve-row">
+
+<div>
+
+<strong>
+Valve 1
+</strong>
+
+<br>
+
+<span class="valve-state ${
+valve1 === "OPEN"
+? "valve-open"
+: "valve-closed"
+}">
+
+${valve1}
+
+</span>
+
+</div>
+
+
+<div class="valve-buttons">
+
+<button
+class="btn-green"
+onclick="valveCommand('${escapeJS(id)}','open1')">
+
+OPEN
+
+</button>
+
+<button
+class="btn-red"
+onclick="valveCommand('${escapeJS(id)}','close1')">
+
+CLOSE
+
+</button>
+
+</div>
+
+</div>
+
+
+<div class="valve-row">
+
+<div>
+
+<strong>
+Valve 2
+</strong>
+
+<br>
+
+<span class="valve-state ${
+valve2 === "OPEN"
+? "valve-open"
+: "valve-closed"
+}">
+
+${valve2}
+
+</span>
+
+</div>
+
+
+<div class="valve-buttons">
+
+<button
+class="btn-green"
+onclick="valveCommand('${escapeJS(id)}','open2')">
+
+OPEN
+
+</button>
+
+<button
+class="btn-red"
+onclick="valveCommand('${escapeJS(id)}','close2')">
+
+CLOSE
+
+</button>
+
+</div>
+
+</div>
+
+
+<div
+style="
+display:flex;
+gap:8px;
+margin-top:10px;
+">
+
+<button
+class="btn-blue"
+style="flex:1"
+onclick="valveCommand('${escapeJS(id)}','open')">
+
+OPEN BOTH
+
+</button>
+
+
+<button
+class="btn-gray"
+style="flex:1"
+onclick="valveCommand('${escapeJS(id)}','close')">
+
+CLOSE BOTH
+
+</button>
+
+</div>
+
+
+</div>
+
+`;
+
+
+container.appendChild(
+card
+);
+
+});
+
+}
+
+
+/* =====================================================
+   NORMALIZE VALVE
+===================================================== */
+
+function normalizeValve(value){
+
+if(
+value === true ||
+value === 1 ||
+String(value).toUpperCase()
+=== "OPEN"
+){
+
+return "OPEN";
+
+}
+
+return "CLOSED";
+
+}
+
+
+/* =====================================================
+   HTML ESCAPE
+===================================================== */
+
+function escapeHTML(value){
+
+return String(value)
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+
+}
+
+
+/* =====================================================
+   JAVASCRIPT ESCAPE
+===================================================== */
+
+function escapeJS(value){
+
+return String(value)
+.replace(/\\/g,"\\\\")
+.replace(/'/g,"\\'");
+
+}
+
+
+/* =====================================================
+   AUTOMATIC MQTT CONNECTION
+===================================================== */
+
+window.addEventListener(
+"load",
+function(){
+
+console.log(
+"AQUASENSE dashboard loaded."
+);
+
+});
+
 </script>
+
 </body>
 </html>
