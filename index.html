@@ -293,9 +293,9 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 </div>
 </div>
 
-<div class="nodes-wrapper">
-<div class="section-title"><h2>Customer Nodes</h2><div><span class="small">Total Nodes: </span><strong id="nodeCount">0</strong></div></div>
-<div id="nodesContainer" class="nodes-grid"></div>
+<div class="farm-wrapper">
+<div class="section-title"><h2>Customer farm</h2><div><span class="small">Total farm: </span><strong id="farmCount">0</strong></div></div>
+<div id="farmContainer" class="farm-grid"></div>
 </div>
 </section>
 
@@ -408,7 +408,7 @@ function renderNodes(nodes){
 const container = document.getElementById("nodesContainer");
 container.innerHTML = "";
 if(nodes.length === 0){
-container.innerHTML = `<div class="card"><h3>No Customer farm</h3><p class="small">Waiting for LoRa customer nodes...</p></div>`;
+container.innerHTML = `<div class="card"><h3>No Customer node</h3><p class="small">Waiting for LoRa customer nodes...</p></div>`;
 return;
 }
 nodes.forEach(node => {
