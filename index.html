@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOLAR POWERED IRRIGATION SYSTEM</title>
+<title>AquaSense | Solar Powered Smart Irrigation</title>
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <style>
 *{
@@ -253,7 +253,12 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 <section id="dashboardPage" class="page">
 <div class="dashboard-header">
 <div><h1>AQUASENSE SMART IRRIGATIONS</h1><p class="small">Real-time irrigation monitoring and control</p></div>
-<div class="connection"><div id="mqttDot" class="dot"></div><span id="mqttStatus">MQTT Disconnected</span></div>
+<div class="connection">
+        <div id="mqttDot" class="dot"></div>
+        <span id="mqttStatus">MQTT Disconnected</span>
+        <span style="color:#9ca3af">|</span>
+        <span id="lastUpdate">No data received</span>
+    </div>
 </div>
 
 <div class="grid">
@@ -330,7 +335,11 @@ document.getElementById("loginMessage").innerText = "Invalid username or passwor
 }
 }
 function logout(){
-if(mqttClient){ try{ mqttClient.end(); }catch(e){} }
+if(mqttClient){ try{ mqttClient.end(true); }catch(e){} }
+mqttClient = null;
+mqttConnectInProgress = false;
+lastDataReceivedAt = 0;
+setMQTTStatus("MQTT Disconnected", false);
 document.getElementById("mainApp").style.display = "none";
 document.getElementById("loginPage").style.display = "flex";
 document.getElementById("username").value=""; document.getElementById("password").value="";
@@ -340,95 +349,188 @@ document.querySelectorAll(".page").forEach(page => { page.classList.remove("acti
 document.getElementById(pageId).classList.add("active");
 }
 let mqttClient = null;
+let lastDataReceivedAt = 0;
+let mqttConnectInProgress = false;
+
 function connectMQTT(){
-if(mqttClient){ try{ mqttClient.end(true); }catch(e){} }
-setMQTTStatus("Connecting...", false);
-const clientId = "AquaSenseWeb_" + Math.random().toString(16).substring(2,10);
-mqttClient = mqtt.connect(MQTT_BROKER, { clientId:clientId, clean:true, connectTimeout:10000, reconnectPeriod:5000, keepalive:60 });
-mqttClient.on("connect", function(){
-setMQTTStatus("MQTT Connected", true);
-mqttClient.subscribe(MQTT_LIVE_TOPIC, { qos: 0 }, function(error){
-    if(error){
-        console.error("MQTT subscription failed:", error);
-    } else {
-        console.log("Subscribed to:", MQTT_LIVE_TOPIC);
-    }
-});
-});
-mqttClient.on("message", function(topic,message){
-if(topic !== MQTT_LIVE_TOPIC) return;
-try{
-const data = JSON.parse(message.toString());
-console.log("MQTT TOPIC:", topic);
-console.log("MQTT DATA:", data);
-updateDashboard(data);
-} catch(error){ console.error("Invalid MQTT JSON:", error); }
-});
-mqttClient.on("reconnect", function(){ setMQTTStatus("Reconnecting...", false); });
-mqttClient.on("offline", function(){ setMQTTStatus("MQTT Offline", false); });
-mqttClient.on("error", function(error){ setMQTTStatus("MQTT Error", false); });
-mqttClient.on("close", function(){ setMQTTStatus("MQTT Disconnected", false); });
+    if (mqttConnectInProgress) return;
+    if (mqttClient && mqttClient.connected) return;
+
+    mqttConnectInProgress = true;
+    setMQTTStatus("Connecting...", false);
+
+    const clientId = "AquaSenseWeb_" + Math.random().toString(16).slice(2, 12);
+
+    mqttClient = mqtt.connect(MQTT_BROKER, {
+        clientId: clientId,
+        clean: true,
+        connectTimeout: 15000,
+        reconnectPeriod: 5000,
+        keepalive: 60,
+        protocolVersion: 4
+    });
+
+    mqttClient.on("connect", function(){
+        mqttConnectInProgress = false;
+        setMQTTStatus("MQTT Connected", true);
+
+        mqttClient.subscribe(MQTT_LIVE_TOPIC, { qos: 0 }, function(error){
+            if (error) {
+                console.error("MQTT subscription failed:", error);
+                setMQTTStatus("Subscription failed", false);
+            } else {
+                console.log("Subscribed successfully:", MQTT_LIVE_TOPIC);
+            }
+        });
+    });
+
+    mqttClient.on("message", function(topic, message){
+        if (topic !== MQTT_LIVE_TOPIC) return;
+
+        try {
+            const rawPayload = message.toString();
+            const data = JSON.parse(rawPayload);
+
+            if (!data || typeof data !== "object" || Array.isArray(data)) {
+                throw new Error("MQTT payload must be a JSON object.");
+            }
+
+            // Accept either the direct master payload or a payload wrapped in "data".
+            const dashboardData = (data.data && typeof data.data === "object")
+                ? { ...data, ...data.data }
+                : data;
+
+            lastDataReceivedAt = Date.now();
+            const lastUpdate = document.getElementById("lastUpdate");
+            if (lastUpdate) lastUpdate.textContent =
+                "Updated " + new Date(lastDataReceivedAt).toLocaleTimeString();
+
+            console.log("MQTT DATA RECEIVED:", dashboardData);
+            updateDashboard(dashboardData);
+        } catch (error) {
+            console.error("Could not process MQTT message:", error, message.toString());
+        }
+    });
+
+    mqttClient.on("reconnect", function(){
+        mqttConnectInProgress = true;
+        setMQTTStatus("Reconnecting...", false);
+    });
+
+    mqttClient.on("offline", function(){
+        mqttConnectInProgress = false;
+        setMQTTStatus("MQTT Offline", false);
+    });
+
+    mqttClient.on("error", function(error){
+        mqttConnectInProgress = false;
+        console.error("MQTT error:", error);
+        setMQTTStatus("MQTT Error", false);
+    });
+
+    mqttClient.on("close", function(){
+        mqttConnectInProgress = false;
+        setMQTTStatus("MQTT Disconnected", false);
+    });
+
+    mqttClient.on("end", function(){
+        mqttConnectInProgress = false;
+        setMQTTStatus("MQTT Disconnected", false);
+    });
 }
+
 function setMQTTStatus(text, connected){
 document.getElementById("mqttStatus").innerText = text;
 const dot = document.getElementById("mqttDot");
 if(connected) dot.classList.add("connected"); else dot.classList.remove("connected");
 }
 function sendCommand(command){
-if(!mqttClient || !mqttClient.connected){ alert("MQTT is not connected."); return; }
-mqttClient.publish(MQTT_CMD_TOPIC, JSON.stringify(command), {qos:0, retain:false});
-console.log("COMMAND:", command);
+    if (!mqttClient || !mqttClient.connected) {
+        alert("MQTT is not connected. Please wait for reconnection.");
+        return;
+    }
+
+    const payload = JSON.stringify(command);
+    mqttClient.publish(MQTT_CMD_TOPIC, payload, { qos: 0, retain: false }, function(error){
+        if (error) {
+            console.error("Command publish failed:", error);
+            alert("The command could not be sent. Check the MQTT connection.");
+        } else {
+            console.log("COMMAND PUBLISHED:", command);
+        }
+    });
 }
 function pumpCommand(state){ sendCommand({ pump:state }); }
 function valveCommand(node, action){ sendCommand({ node:String(node), action:action }); }
 
+function readNumber(value, fallback = 0){
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+}
+
 function updateDashboard(data){
+    if (!data || typeof data !== "object") {
+        console.warn("Dashboard update skipped: invalid data object.");
+        return;
+    }
+
     // Tank readings
-    const distance = Number(data.waterDistance ?? 0);
-    const distanceElement = document.getElementById("waterDistance");
-    if(distanceElement) distanceElement.innerText = distance.toFixed(1);
+    if (data.waterDistance !== undefined) {
+        document.getElementById("waterDistance").textContent =
+            readNumber(data.waterDistance).toFixed(1);
+    }
 
-    const levelCm = Number(data.waterLevelCm ?? 0);
-    const levelElement = document.getElementById("waterLevelCm");
-    if(levelElement) levelElement.innerText = levelCm.toFixed(1);
+    if (data.waterLevelCm !== undefined) {
+        document.getElementById("waterLevelCm").textContent =
+            readNumber(data.waterLevelCm).toFixed(1);
+    }
 
-    let levelPercent = Number(data.waterLevelPercent ?? 0);
-    if(!Number.isFinite(levelPercent)) levelPercent = 0;
-    levelPercent = Math.max(0, Math.min(100, levelPercent));
+    if (data.waterLevelPercent !== undefined) {
+        const levelPercent = Math.max(0, Math.min(100, readNumber(data.waterLevelPercent)));
+        document.getElementById("waterLevelPercent").textContent = levelPercent.toFixed(1) + " %";
+        document.getElementById("tankVisualPercent").textContent = levelPercent.toFixed(1) + "%";
+        document.getElementById("waterVisual").style.height = levelPercent + "%";
+    }
 
-    document.getElementById("waterLevelPercent").innerText = levelPercent.toFixed(1) + " %";
-    document.getElementById("tankVisualPercent").innerText = levelPercent.toFixed(1) + "%";
-    document.getElementById("waterVisual").style.height = levelPercent + "%";
-
-    if(data.tankHeight !== undefined && data.tankHeight !== null){
-        document.getElementById("tankHeight").innerText = Number(data.tankHeight).toFixed(0) + " cm";
+    if (data.tankHeight !== undefined && data.tankHeight !== null) {
+        document.getElementById("tankHeight").textContent =
+            readNumber(data.tankHeight).toFixed(0) + " cm";
     }
 
     // Pump status
-    let pumpState = String(data.pumpState ?? data.pump ?? "OFF").toUpperCase();
-    const pumpElement = document.getElementById("pumpStatus");
-    if(["ON", "1", "TRUE"].includes(pumpState)){
-        pumpElement.innerText = "ON";
-        pumpElement.className = "pump-status pump-on";
-    } else {
-        pumpElement.innerText = "OFF";
-        pumpElement.className = "pump-status pump-off";
+    if (data.pumpState !== undefined || data.pump !== undefined) {
+        const pumpState = String(data.pumpState ?? data.pump ?? "OFF").toUpperCase();
+        const pumpElement = document.getElementById("pumpStatus");
+        const pumpIsOn = ["ON", "1", "TRUE"].includes(pumpState);
+        pumpElement.textContent = pumpIsOn ? "ON" : "OFF";
+        pumpElement.className = "pump-status " + (pumpIsOn ? "pump-on" : "pump-off");
     }
 
     // Master flow readings
-    const masterFlow = Number(data.masterFlow ?? 0);
-    document.getElementById("masterFlow").innerText = masterFlow.toFixed(2) + " L/min";
+    if (data.masterFlow !== undefined) {
+        document.getElementById("masterFlow").textContent =
+            readNumber(data.masterFlow).toFixed(2) + " L/min";
+    }
 
-    const masterTotal = Number(data.masterTotal ?? 0);
-    document.getElementById("masterTotal").innerText = masterTotal.toFixed(2);
+    if (data.masterTotal !== undefined) {
+        document.getElementById("masterTotal").textContent =
+            readNumber(data.masterTotal).toFixed(2);
+    }
 
-    // Customer nodes: master must publish a JSON array named "nodes".
-    const nodes = Array.isArray(data.nodes) ? data.nodes : [];
-    const nodeCountElement = document.getElementById("nodeCount");
-    if(nodeCountElement) nodeCountElement.innerText = nodes.length;
+    // Master firmware should publish: {"nodes":[{"id":"1", ...}]}
+    const nodes = Array.isArray(data.nodes)
+        ? data.nodes
+        : (data.node && typeof data.node === "object" ? [data.node] : null);
 
-    console.log("CUSTOMER NODES RECEIVED:", nodes.length, nodes);
-    renderNodes(nodes);
+    if (nodes) {
+        const nodeCountElement = document.getElementById("nodeCount");
+        if (nodeCountElement) nodeCountElement.textContent = nodes.length;
+
+        console.log("CUSTOMER NODES RECEIVED:", nodes.length, nodes);
+        renderNodes(nodes);
+    } else {
+        console.warn('MQTT message did not contain a "nodes" array. Check the Master ESP32 JSON payload.');
+    }
 }
 
 function renderNodes(nodes){
@@ -495,7 +597,23 @@ return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&g
 function escapeJS(value){
 return String(value).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
 }
-window.addEventListener("load", function(){ console.log("AQUASENSE dashboard loaded."); });
+setInterval(function(){
+    if (!lastDataReceivedAt) return;
+
+    const ageSeconds = Math.floor((Date.now() - lastDataReceivedAt) / 1000);
+    const lastUpdate = document.getElementById("lastUpdate");
+
+    if (lastUpdate && ageSeconds > 15) {
+        lastUpdate.textContent = "Data stale (" + ageSeconds + "s ago)";
+        lastUpdate.style.color = "#d32f2f";
+    } else if (lastUpdate) {
+        lastUpdate.style.color = "#6b7280";
+    }
+}, 3000);
+
+window.addEventListener("load", function(){
+    console.log("AQUASENSE dashboard loaded.");
+});
 </script>
 </body>
 </html>
