@@ -260,7 +260,7 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 <div class="card">
 <div class="icon"> Tank Water Level</div>
 <div id="waterLevelPercent" class="big-value">0 %</div>
-<div class="small">Height: <span id="waterLevelCm">0</span> cm | Dist: <span id="waterDistance">0</span> cm</div>
+<div class="small">Height: <span id="waterLevelCm">0</span> cm | Dist: <span id="water level">0</span> cm</div>
 </div>
 
 <div class="card">
@@ -408,7 +408,7 @@ function renderNodes(nodes){
 const container = document.getElementById("nodesContainer");
 container.innerHTML = "";
 if(nodes.length === 0){
-container.innerHTML = `<div class="card"><h3>No Customer Nodes</h3><p class="small">Waiting for LoRa customer nodes...</p></div>`;
+container.innerHTML = `<div class="card"><h3>No Customer farm</h3><p class="small">Waiting for LoRa customer nodes...</p></div>`;
 return;
 }
 nodes.forEach(node => {
@@ -438,7 +438,7 @@ card.innerHTML = `
 <div class="data-box"><div class="data-label">ID</div><div class="data-value">${escapeHTML(id)}</div></div>
 </div>
 <div class="valve-section">
-<h3>⚙ Valve Control</h3>
+<h3> Valve Control</h3>
 <div class="valve-row"><div><strong>Valve 1</strong><br><span class="valve-state ${valve1 === "OPEN" ? "valve-open" : "valve-closed"}">${valve1}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open1')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close1')">CLOSE</button></div></div>
 <div class="valve-row"><div><strong>Valve 2</strong><br><span class="valve-state ${valve2 === "OPEN" ? "valve-open" : "valve-closed"}">${valve2}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open2')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close2')">CLOSE</button></div></div>
 <div style="display:flex; gap:6px; margin-top:6px;"><button class="btn-blue" style="flex:1" onclick="valveCommand('${escapeJS(id)}','open')">OPEN BOTH</button><button class="btn-gray" style="flex:1" onclick="valveCommand('${escapeJS(id)}','close')">CLOSE BOTH</button></div>
