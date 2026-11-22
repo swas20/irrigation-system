@@ -76,12 +76,6 @@ body{
 }
 .dashboard-header h1{ color:#00695c; font-size:20px; }
 .dashboard-header p{ font-size:12px; }
-.header-right{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    flex-wrap:wrap;
-}
 .connection{
     display:flex;
     align-items:center;
@@ -94,66 +88,6 @@ body{
 }
 .dot{ width:10px; height:10px; border-radius:50%; background:#f44336; }
 .dot.connected{ background:#00c853; }
-
-/* ONLINE MASTER NODES BAR */
-.master-nodes-bar{
-    background:white;
-    border-radius:10px;
-    padding:8px 12px;
-    margin-bottom:10px;
-    box-shadow:0 2px 8px rgba(0,0,0,.08);
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    flex-wrap:wrap;
-}
-.master-nodes-label{
-    font-size:12px;
-    font-weight:bold;
-    color:#00695c;
-    display:flex;
-    align-items:center;
-    gap:6px;
-}
-.master-nodes-list{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    flex-wrap:wrap;
-    flex:1;
-}
-.master-chip{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:5px 10px;
-    border-radius:16px;
-    font-size:11px;
-    font-weight:bold;
-    background:#e8f5e9;
-    color:#1b5e20;
-    border:1px solid #a5d6a7;
-    cursor:pointer;
-}
-.master-chip.active-master{
-    background:#00695c;
-    color:white;
-    border-color:#00695c;
-}
-.master-chip-dot{
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:#00c853;
-}
-.master-chip.active-master .master-chip-dot{
-    background:#80cbc4;
-}
-.master-empty{
-    font-size:11px;
-    color:#6b7280;
-}
 
 /* TOP GRID 5 COLS */
 .grid{
@@ -313,6 +247,219 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 <div class="info-card"><h2> Vision</h2><p>To provide intelligent and sustainable water distribution through automation and real-time monitoring.</p></div>
 <div class="info-card"><h2> Mission</h2><p>To reduce water losses, improve distribution efficiency and provide reliable monitoring and control of water systems.</p></div>
 <div class="info-card"><h2> Innovation</h2><p>AQUASENSE combines LoRa communication, flow monitoring, automatic valves, tank-level monitoring, pump control and cloud monitoring.</p></div>
+</div>
+</section>
+
+<section id="dashboardPage" class="page">
+<div class="dashboard-header">
+<div><h1>AQUASENSE Dashboard</h1><p class="small">Real-time irrigation monitoring and control</p></div>
+<div class="connection"><div id="mqttDot" class="dot"></div><span id="mqttStatus">MQTT Disconnected</span></div>
+</div>
+
+<div class="grid">
+<div class="card">
+<div class="icon">💧 Tank Water Level</div>
+<div id="waterLevelPercent" class="big-value">0 %</div>
+<div class="small">Height: <span id="waterLevelCm">0</span> cm | Dist: <span id="waterDistance">0</span> cm</div>
+</div>
+
+<div class="card">
+<div class="icon"> Pump</div>
+<div id="pumpStatus" class="pump-status pump-off">OFF</div>
+<div style="margin-top:8px; display:flex; gap:6px;">
+<button class="btn-green" style="flex:1" onclick="pumpCommand('on')">ON</button>
+<button class="btn-red" style="flex:1" onclick="pumpCommand('off')">OFF</button>
+</div>
+</div>
+
+<div class="card">
+<div class="icon"> Master Flow</div>
+<div id="masterFlow" class="big-value">0 L/min</div>
+<div class="small">Total: <span id="masterTotal">0</span> L</div>
+</div>
+
+<div class="card">
+<div class="icon">Tank Capacity</div>
+<div id="tankHeight" class="big-value">5MTRS</div>
+<div class="small">Configured tank height</div>
+</div>
+
+<div class="card">
+<h3>🛢 Tank Visual</h3>
+<div class="tank-box">
+<div class="tank"><div id="waterVisual" class="water" style="height:0%"></div></div>
+<div><div id="tankVisualPercent" class="tank-percent">0%</div><p class="small">Real-time ultrasonic</p></div>
+</div>
+</div>
+</div>
+
+<div class="nodes-wrapper">
+<div class="section-title"><h2> Customer Nodes</h2><div><span class="small">Total Nodes: </span><strong id="nodeCount">0</strong></div></div>
+<div id="nodesContainer" class="nodes-grid"></div>
+</div>
+</section>
+
+<section id="aboutPage" class="page">
+<div class="hero"><h1>About AQUASENSE</h1><p>A smart water distribution system and monitoring platform designed to improve water management using automation, sensors, LoRa communication and cloud connectivity.</p></div>
+<div class="info-grid">
+<div class="info-card"><h2> Water Monitoring</h2><p>Monitor flow rate, total water consumption and water distribution in real time.</p></div>
+<div class="info-card"><h2> LoRa Communication</h2><p>Customer nodes communicate with the master controller through long-range LoRa communication.</p></div>
+<div class="info-card"><h2> Automated Control</h2><p>The system controls water valves and the main pump according to system conditions.</p></div>
+<div class="info-card"><h2> Remote Dashboard</h2><p>The dashboard provides real-time monitoring and control through MQTT communication.</p></div>
+</div>
+</section>
+</div>
+<footer><p>SOLAR POWERED IRRIGATION SYSTEM - Smart Irrigation System • LoRa • IoT • Automation</p></footer>
+</div>
+
+<script>
+const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
+const MQTT_LIVE_TOPIC = "aquasense/moses_kaaga_9x7p2/live";
+const MQTT_CMD_TOPIC = "aquasense/moses_kaaga_9x7p2/cmd";
+
+function login(){
+const username = document.getElementById("username").value.trim();
+const password = document.getElementById("password").value.trim();
+if(username === "aquasense" && password === "irrigation2026"){
+document.getElementById("loginPage").style.display = "none";
+document.getElementById("mainApp").style.display = "block";
+connectMQTT();
+showPage('dashboardPage');
+} else {
+document.getElementById("loginMessage").innerText = "Invalid username or password.";
+}
+}
+function logout(){
+if(mqttClient){ try{ mqttClient.end(); }catch(e){} }
+document.getElementById("mainApp").style.display = "none";
+document.getElementById("loginPage").style.display = "flex";
+document.getElementById("username").value=""; document.getElementById("password").value="";
+}
+function showPage(pageId){
+document.querySelectorAll(".page").forEach(page => { page.classList.remove("active"); });
+document.getElementById(pageId).classList.add("active");
+}
+let mqttClient = null;
+function connectMQTT(){
+if(mqttClient){ try{ mqttClient.end(true); }catch(e){} }
+setMQTTStatus("Connecting...", false);
+const clientId = "AquaSenseWeb_" + Math.random().toString(16).substring(2,10);
+mqttClient = mqtt.connect(MQTT_BROKER, { clientId:clientId, clean:true, connectTimeout:10000, reconnectPeriod:5000, keepalive:60 });
+mqttClient.on("connect", function(){
+setMQTTStatus("MQTT Connected", true);
+mqttClient.subscribe(MQTT_LIVE_TOPIC, function(error){});
+});
+mqttClient.on("message", function(topic,message){
+if(topic !== MQTT_LIVE_TOPIC) return;
+try{
+const data = JSON.parse(message.toString());
+updateDashboard(data);
+} catch(error){ console.error("Invalid MQTT JSON:", error); }
+});
+mqttClient.on("reconnect", function(){ setMQTTStatus("Reconnecting...", false); });
+mqttClient.on("offline", function(){ setMQTTStatus("MQTT Offline", false); });
+mqttClient.on("error", function(error){ setMQTTStatus("MQTT Error", false); });
+mqttClient.on("close", function(){ setMQTTStatus("MQTT Disconnected", false); });
+}
+function setMQTTStatus(text, connected){
+document.getElementById("mqttStatus").innerText = text;
+const dot = document.getElementById("mqttDot");
+if(connected) dot.classList.add("connected"); else dot.classList.remove("connected");
+}
+function sendCommand(command){
+if(!mqttClient || !mqttClient.connected){ alert("MQTT is not connected."); return; }
+mqttClient.publish(MQTT_CMD_TOPIC, JSON.stringify(command), {qos:0, retain:false});
+console.log("COMMAND:", command);
+}
+function pumpCommand(state){ sendCommand({ pump:state }); }
+function valveCommand(node, action){ sendCommand({ node:String(node), action:action }); }
+
+function updateDashboard(data){
+const distance = Number(data.waterDistance || 0);
+document.getElementById("waterDistance").innerText = distance.toFixed(1);
+const levelCm = Number(data.waterLevelCm || 0);
+document.getElementById("waterLevelCm").innerText = levelCm.toFixed(1);
+let levelPercent = Number(data.waterLevelPercent || 0);
+if(levelPercent < 0) levelPercent = 0; if(levelPercent > 100) levelPercent = 100;
+document.getElementById("waterLevelPercent").innerText = levelPercent.toFixed(1) + " %";
+document.getElementById("tankVisualPercent").innerText = levelPercent.toFixed(1) + "%";
+document.getElementById("waterVisual").style.height = levelPercent + "%";
+if(data.tankHeight !== undefined){
+document.getElementById("tankHeight").innerText = Number(data.tankHeight).toFixed(0) + " cm";
+}
+let pumpState = data.pumpState || data.pump || "OFF";
+pumpState = String(pumpState).toUpperCase();
+const pumpElement = document.getElementById("pumpStatus");
+if(pumpState === "ON" || pumpState === "1" || pumpState === "TRUE"){
+pumpElement.innerText = "ON"; pumpElement.className = "pump-status pump-on";
+} else {
+pumpElement.innerText = "OFF"; pumpElement.className = "pump-status pump-off";
+}
+const masterFlow = Number(data.masterFlow || 0);
+document.getElementById("masterFlow").innerText = masterFlow.toFixed(2) + " L/min";
+const masterTotal = Number(data.masterTotal || 0);
+document.getElementById("masterTotal").innerText = masterTotal.toFixed(2);
+const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+document.getElementById("nodeCount").innerText = nodes.length;
+renderNodes(nodes);
+}
+
+function renderNodes(nodes){
+const container = document.getElementById("nodesContainer");
+container.innerHTML = "";
+if(nodes.length === 0){
+container.innerHTML = `<div class="card"><h3>No Customer Nodes</h3><p class="small">Waiting for LoRa customer nodes...</p></div>`;
+return;
+}
+nodes.forEach(node => {
+const id = node.id || "--";
+const flow = Number(node.flow || 0);
+const total = Number(node.total || 0);
+const m1 = Number(node.m1 || 0);
+const m2 = Number(node.m2 || 0);
+const temp = Number(node.temp || 0);
+const hum = Number(node.hum || 0);
+const rssi = Number(node.rssi || 0);
+const online = node.online === true;
+const valve1 = normalizeValve(node.valve1);
+const valve2 = normalizeValve(node.valve2);
+const card = document.createElement("div");
+card.className = "node-card";
+card.innerHTML = `
+<div class="node-title"><h2> Node ${escapeHTML(id)}</h2><span class="status ${online ? "online" : "offline"}">${online ? "ONLINE" : "OFFLINE"}</span></div>
+<div class="node-data">
+<div class="data-box"><div class="data-label">Flow Rate</div><div class="data-value">${flow.toFixed(2)} L/min</div></div>
+<div class="data-box"><div class="data-label">Total Water</div><div class="data-value">${total.toFixed(2)} L</div></div>
+<div class="data-box"><div class="data-label">Soil M1</div><div class="data-value">${m1.toFixed(0)} %</div></div>
+<div class="data-box"><div class="data-label">Soil M2</div><div class="data-value">${m2.toFixed(0)} %</div></div>
+<div class="data-box"><div class="data-label">Temp</div><div class="data-value">${temp.toFixed(1)} °C</div></div>
+<div class="data-box"><div class="data-label">Humidity</div><div class="data-value">${hum.toFixed(1)} %</div></div>
+<div class="data-box"><div class="data-label">Signal</div><div class="data-value">${rssi} dBm</div></div>
+<div class="data-box"><div class="data-label">ID</div><div class="data-value">${escapeHTML(id)}</div></div>
+</div>
+<div class="valve-section">
+<h3>⚙ Valve Control</h3>
+<div class="valve-row"><div><strong>Valve 1</strong><br><span class="valve-state ${valve1 === "OPEN" ? "valve-open" : "valve-closed"}">${valve1}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open1')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close1')">CLOSE</button></div></div>
+<div class="valve-row"><div><strong>Valve 2</strong><br><span class="valve-state ${valve2 === "OPEN" ? "valve-open" : "valve-closed"}">${valve2}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open2')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close2')">CLOSE</button></div></div>
+<div style="display:flex; gap:6px; margin-top:6px;"><button class="btn-blue" style="flex:1" onclick="valveCommand('${escapeJS(id)}','open')">OPEN BOTH</button><button class="btn-gray" style="flex:1" onclick="valveCommand('${escapeJS(id)}','close')">CLOSE BOTH</button></div>
+</div>`;
+container.appendChild(card);
+});
+}
+function normalizeValve(value){
+if(value === true || value === 1 || String(value).toUpperCase() === "OPEN"){ return "OPEN"; }
+return "CLOSED";
+}
+function escapeHTML(value){
+return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+function escapeJS(value){
+return String(value).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+}
+window.addEventListener("load", function(){ console.log("AQUASENSE dashboard loaded."); });
+</script>
+</body>
+</html>level monitoring, pump control and cloud monitoring.</p></div>
 </div>
 </section>
 
