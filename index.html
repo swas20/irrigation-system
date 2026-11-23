@@ -294,6 +294,8 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 </div>
 
 <div class="nodes-wrapper">
+<div class="section-title"><h2> Master Nodes</h2><div><span class="small">Masters: </span><strong id="masterCount">0</strong><span class="small"> · Select a master to view its top summary</span></div></div>
+<div id="mastersContainer" class="nodes-grid"></div>
 <div class="section-title"><h2> Customer Nodes</h2><div><span class="small">Total Nodes: </span><strong id="nodeCount">0</strong></div></div>
 <div id="nodesContainer" class="nodes-grid"></div>
 </div>
@@ -314,8 +316,15 @@ footer{ background:#263238; color:white; text-align:center; padding:12px; font-s
 
 <script>
 const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
-const MQTT_LIVE_TOPIC = "aquasense/moses_kaaga_9x7p2/live";
-const MQTT_CMD_TOPIC = "aquasense/moses_kaaga_9x7p2/cmd";
+const MQTT_LIVE_TOPIC = "aquasense/+/live";
+const MQTT_CMD_TOPIC = "aquasense/{masterId}/cmd";
+const LEGACY_LIVE_TOPIC = "aquasense/moses_kaaga_9x7p2/live";
+const LEGACY_CMD_TOPIC = "aquasense/moses_kaaga_9x7p2/cmd";
+
+// One dashboard record per master. Master IDs are taken from the MQTT topic
+// first, then from the JSON masterId/id field.
+const masters = new Map();
+let selectedMasterId = null;
 
 function login(){
 const username = document.getElementById("username").value.trim();
@@ -347,13 +356,16 @@ const clientId = "AquaSenseWeb_" + Math.random().toString(16).substring(2,10);
 mqttClient = mqtt.connect(MQTT_BROKER, { clientId:clientId, clean:true, connectTimeout:10000, reconnectPeriod:5000, keepalive:60 });
 mqttClient.on("connect", function(){
 setMQTTStatus("MQTT Connected", true);
-mqttClient.subscribe(MQTT_LIVE_TOPIC, function(error){});
+// Subscribe to every master live feed and the old single-master feed.
+mqttClient.subscribe(["aquasense/+/live", LEGACY_LIVE_TOPIC], function(error){
+if(error) console.error("MQTT subscription failed:", error);
+});
 });
 mqttClient.on("message", function(topic,message){
-if(topic !== MQTT_LIVE_TOPIC) return;
 try{
 const data = JSON.parse(message.toString());
-updateDashboard(data);
+const topicMasterId = getMasterIdFromTopic(topic);
+if(topicMasterId || topic === LEGACY_LIVE_TOPIC) updateDashboard(data, topicMasterId);
 } catch(error){ console.error("Invalid MQTT JSON:", error); }
 });
 mqttClient.on("reconnect", function(){ setMQTTStatus("Reconnecting...", false); });
@@ -361,33 +373,57 @@ mqttClient.on("offline", function(){ setMQTTStatus("MQTT Offline", false); });
 mqttClient.on("error", function(error){ setMQTTStatus("MQTT Error", false); });
 mqttClient.on("close", function(){ setMQTTStatus("MQTT Disconnected", false); });
 }
+function getMasterIdFromTopic(topic){
+const match = String(topic).match(/^aquasense\/([^/]+)\/live$/);
+return match ? match[1] : null;
+}
 function setMQTTStatus(text, connected){
 document.getElementById("mqttStatus").innerText = text;
 const dot = document.getElementById("mqttDot");
 if(connected) dot.classList.add("connected"); else dot.classList.remove("connected");
 }
-function sendCommand(command){
+function sendCommand(command, masterId){
 if(!mqttClient || !mqttClient.connected){ alert("MQTT is not connected."); return; }
-mqttClient.publish(MQTT_CMD_TOPIC, JSON.stringify(command), {qos:0, retain:false});
-console.log("COMMAND:", command);
+const targetMaster = masterId || selectedMasterId;
+if(!targetMaster){ alert("Select a master node first."); return; }
+const topic = "aquasense/" + encodeURIComponent(targetMaster) + "/cmd";
+mqttClient.publish(topic, JSON.stringify(command), {qos:0, retain:false});
+console.log("COMMAND:", topic, command);
 }
-function pumpCommand(state){ sendCommand({ pump:state }); }
-function valveCommand(node, action){ sendCommand({ node:String(node), action:action }); }
+function pumpCommand(state, masterId){ sendCommand({ pump:state, masterId:masterId || selectedMasterId }, masterId); }
+function valveCommand(node, action, masterId){ sendCommand({ node:String(node), action:action, masterId:masterId || selectedMasterId }, masterId); }
+function selectMaster(masterId){
+selectedMasterId = masterId;
+const record = masters.get(masterId);
+if(record) updateSummaryCards(record.data);
+renderMasters();
+}
 
-function updateDashboard(data){
-const distance = Number(data.waterDistance || 0);
+function updateDashboard(data, topicMasterId){
+const masterId = String(topicMasterId || data.masterId || data.master_id || data.master || data.id || "KE001");
+const previous = masters.get(masterId) || { data:{}, lastSeen:0 };
+const merged = Object.assign({}, previous.data, data);
+merged.masterId = masterId;
+masters.set(masterId, { data:merged, lastSeen:Date.now() });
+if(!selectedMasterId) selectedMasterId = masterId;
+updateSummaryCards(masters.get(selectedMasterId)?.data || merged);
+renderMasters();
+renderAllCustomerNodes();
+}
+function updateSummaryCards(data){
+if(!data) return;
+const distance = Number(data.waterDistance ?? data.distance ?? 0);
 document.getElementById("waterDistance").innerText = distance.toFixed(1);
-const levelCm = Number(data.waterLevelCm || 0);
+const levelCm = Number(data.waterLevelCm ?? data.waterLevelHeight ?? data.tank_level_height ?? 0);
 document.getElementById("waterLevelCm").innerText = levelCm.toFixed(1);
-let levelPercent = Number(data.waterLevelPercent || 0);
-if(levelPercent < 0) levelPercent = 0; if(levelPercent > 100) levelPercent = 100;
+let levelPercent = Number(data.waterLevelPercent ?? data.tank_level_percent ?? 0);
+levelPercent = Math.max(0, Math.min(100, levelPercent));
 document.getElementById("waterLevelPercent").innerText = levelPercent.toFixed(1) + " %";
 document.getElementById("tankVisualPercent").innerText = levelPercent.toFixed(1) + "%";
 document.getElementById("waterVisual").style.height = levelPercent + "%";
-if(data.tankHeight !== undefined){
-document.getElementById("tankHeight").innerText = Number(data.tankHeight).toFixed(0) + " cm";
-}
-let pumpState = data.pumpState || data.pump || "OFF";
+const tankHeight = data.tankHeight ?? data.tankHeightCm ?? data.tank_height;
+if(tankHeight !== undefined) document.getElementById("tankHeight").innerText = Number(tankHeight).toFixed(0) + " cm";
+let pumpState = data.pumpState ?? data.pump_relay ?? data.pump ?? "OFF";
 pumpState = String(pumpState).toUpperCase();
 const pumpElement = document.getElementById("pumpStatus");
 if(pumpState === "ON" || pumpState === "1" || pumpState === "TRUE"){
@@ -395,487 +431,81 @@ pumpElement.innerText = "ON"; pumpElement.className = "pump-status pump-on";
 } else {
 pumpElement.innerText = "OFF"; pumpElement.className = "pump-status pump-off";
 }
-const masterFlow = Number(data.masterFlow || 0);
+const masterFlow = Number(data.masterFlow ?? data.flow_rate ?? data.flowRate ?? 0);
 document.getElementById("masterFlow").innerText = masterFlow.toFixed(2) + " L/min";
-const masterTotal = Number(data.masterTotal || 0);
+const masterTotal = Number(data.masterTotal ?? data.volume_total ?? data.total ?? 0);
 document.getElementById("masterTotal").innerText = masterTotal.toFixed(2);
-const nodes = Array.isArray(data.nodes) ? data.nodes : [];
-document.getElementById("nodeCount").innerText = nodes.length;
-renderNodes(nodes);
 }
-
-function renderNodes(nodes){
-const container = document.getElementById("nodesContainer");
+function renderMasters(){
+const container = document.getElementById("mastersContainer");
 container.innerHTML = "";
-if(nodes.length === 0){
-container.innerHTML = `<div class="card"><h3>No Customer Nodes</h3><p class="small">Waiting for LoRa customer nodes...</p></div>`;
+document.getElementById("masterCount").innerText = masters.size;
+if(masters.size === 0){
+container.innerHTML = '<div class="card"><h3>No Master Nodes</h3><p class="small">Waiting for master telemetry...</p></div>';
 return;
 }
-nodes.forEach(node => {
-const id = node.id || "--";
-const flow = Number(node.flow || 0);
-const total = Number(node.total || 0);
-const m1 = Number(node.m1 || 0);
-const m2 = Number(node.m2 || 0);
-const temp = Number(node.temp || 0);
-const hum = Number(node.hum || 0);
-const rssi = Number(node.rssi || 0);
-const online = node.online === true;
-const valve1 = normalizeValve(node.valve1);
-const valve2 = normalizeValve(node.valve2);
+masters.forEach((record, masterId) => {
+const data = record.data || {};
+const isSelected = masterId === selectedMasterId;
+const ageSeconds = Math.max(0, Math.floor((Date.now() - record.lastSeen) / 1000));
+const online = ageSeconds <= 90;
+const flow = Number(data.masterFlow ?? data.flow_rate ?? data.flowRate ?? 0);
+const total = Number(data.masterTotal ?? data.volume_total ?? data.total ?? 0);
+const level = Number(data.waterLevelPercent ?? data.tank_level_percent ?? 0);
+const pump = String(data.pumpState ?? data.pump_relay ?? data.pump ?? "OFF").toUpperCase();
 const card = document.createElement("div");
 card.className = "node-card";
+card.style.borderTopColor = isSelected ? "#1976d2" : "#00695c";
 card.innerHTML = `
-<div class="node-title"><h2> Node ${escapeHTML(id)}</h2><span class="status ${online ? "online" : "offline"}">${online ? "ONLINE" : "OFFLINE"}</span></div>
+<div class="node-title"><h2>Master ${escapeHTML(masterId)}</h2><span class="status ${online ? "online" : "offline"}">${online ? "ONLINE" : "OFFLINE"}</span></div>
 <div class="node-data">
-<div class="data-box"><div class="data-label">Flow Rate</div><div class="data-value">${flow.toFixed(2)} L/min</div></div>
+<div class="data-box"><div class="data-label">Master Flow</div><div class="data-value">${flow.toFixed(2)} L/min</div></div>
 <div class="data-box"><div class="data-label">Total Water</div><div class="data-value">${total.toFixed(2)} L</div></div>
-<div class="data-box"><div class="data-label">Soil M1</div><div class="data-value">${m1.toFixed(0)} %</div></div>
-<div class="data-box"><div class="data-label">Soil M2</div><div class="data-value">${m2.toFixed(0)} %</div></div>
-<div class="data-box"><div class="data-label">Temp</div><div class="data-value">${temp.toFixed(1)} °C</div></div>
-<div class="data-box"><div class="data-label">Humidity</div><div class="data-value">${hum.toFixed(1)} %</div></div>
-<div class="data-box"><div class="data-label">Signal</div><div class="data-value">${rssi} dBm</div></div>
-<div class="data-box"><div class="data-label">ID</div><div class="data-value">${escapeHTML(id)}</div></div>
+<div class="data-box"><div class="data-label">Tank Level</div><div class="data-value">${level.toFixed(1)} %</div></div>
+<div class="data-box"><div class="data-label">Pump</div><div class="data-value">${escapeHTML(pump)}</div></div>
 </div>
-<div class="valve-section">
-<h3>⚙ Valve Control</h3>
-<div class="valve-row"><div><strong>Valve 1</strong><br><span class="valve-state ${valve1 === "OPEN" ? "valve-open" : "valve-closed"}">${valve1}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open1')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close1')">CLOSE</button></div></div>
-<div class="valve-row"><div><strong>Valve 2</strong><br><span class="valve-state ${valve2 === "OPEN" ? "valve-open" : "valve-closed"}">${valve2}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open2')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close2')">CLOSE</button></div></div>
-<div style="display:flex; gap:6px; margin-top:6px;"><button class="btn-blue" style="flex:1" onclick="valveCommand('${escapeJS(id)}','open')">OPEN BOTH</button><button class="btn-gray" style="flex:1" onclick="valveCommand('${escapeJS(id)}','close')">CLOSE BOTH</button></div>
-</div>`;
+<button class="btn-blue" onclick="selectMaster('${escapeJS(masterId)}')">${isSelected ? "SELECTED MASTER" : "Select Master"}</button>
+<button class="btn-green" onclick="pumpCommand('on','${escapeJS(masterId)}')">Pump ON</button>
+<button class="btn-red" onclick="pumpCommand('off','${escapeJS(masterId)}')">Pump OFF</button>`;
 container.appendChild(card);
 });
 }
-function normalizeValve(value){
-if(value === true || value === 1 || String(value).toUpperCase() === "OPEN"){ return "OPEN"; }
-return "CLOSED";
-}
-function escapeHTML(value){
-return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
-}
-function escapeJS(value){
-return String(value).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-}
-window.addEventListener("load", function(){ console.log("AQUASENSE dashboard loaded."); });
-</script>
-</body>
-</html>level monitoring, pump control and cloud monitoring.</p></div>
-</div>
-</section>
-
-<section id="dashboardPage" class="page">
-<div class="dashboard-header">
-<div><h1>AQUASENSE Dashboard</h1><p class="small">Real-time irrigation monitoring and control</p></div>
-<div class="header-right">
-<div class="connection"><div id="mqttDot" class="dot"></div><span id="mqttStatus">MQTT Disconnected</span></div>
-</div>
-</div>
-
-<div class="master-nodes-bar">
-<div class="master-nodes-label">📡 Online Master Nodes (<span id="onlineMasterCount">0</span>):</div>
-<div id="onlineMasterNodesList" class="master-nodes-list"><span class="master-empty">Waiting for online master nodes...</span></div>
-</div>
-
-<div class="grid">
-<div class="card">
-<div class="icon">💧 Tank Water Level</div>
-<div id="waterLevelPercent" class="big-value">0 %</div>
-<div class="small">Height: <span id="waterLevelCm">0</span> cm | Dist: <span id="waterDistance">0</span> cm</div>
-</div>
-
-<div class="card">
-<div class="icon"> Pump</div>
-<div id="pumpStatus" class="pump-status pump-off">OFF</div>
-<div style="margin-top:8px; display:flex; gap:6px;">
-<button class="btn-green" style="flex:1" onclick="pumpCommand('on')">ON</button>
-<button class="btn-red" style="flex:1" onclick="pumpCommand('off')">OFF</button>
-</div>
-</div>
-
-<div class="card">
-<div class="icon"> Master Flow</div>
-<div id="masterFlow" class="big-value">0 L/min</div>
-<div class="small">Total: <span id="masterTotal">0</span> L</div>
-</div>
-
-<div class="card">
-<div class="icon">Tank Capacity</div>
-<div id="tankHeight" class="big-value">5MTRS</div>
-<div class="small">Configured tank height</div>
-</div>
-
-<div class="card">
-<h3>🛢 Tank Visual</h3>
-<div class="tank-box">
-<div class="tank"><div id="waterVisual" class="water" style="height:0%"></div></div>
-<div><div id="tankVisualPercent" class="tank-percent">0%</div><p class="small">Real-time ultrasonic</p></div>
-</div>
-</div>
-</div>
-
-<div class="nodes-wrapper">
-<div class="section-title"><h2> Customer Nodes <span class="small" id="activeMasterLabel"></span></h2><div><span class="small">Total Nodes: </span><strong id="nodeCount">0</strong></div></div>
-<div id="nodesContainer" class="nodes-grid"></div>
-</div>
-</section>
-
-<section id="aboutPage" class="page">
-<div class="hero"><h1>About AQUASENSE</h1><p>A smart water distribution system and monitoring platform designed to improve water management using automation, sensors, LoRa communication and cloud connectivity.</p></div>
-<div class="info-grid">
-<div class="info-card"><h2> Water Monitoring</h2><p>Monitor flow rate, total water consumption and water distribution in real time.</p></div>
-<div class="info-card"><h2> LoRa Communication</h2><p>Customer nodes communicate with the master controller through long-range LoRa communication.</p></div>
-<div class="info-card"><h2> Automated Control</h2><p>The system controls water valves and the main pump according to system conditions.</p></div>
-<div class="info-card"><h2> Remote Dashboard</h2><p>The dashboard provides real-time monitoring and control through MQTT communication.</p></div>
-</div>
-</section>
-</div>
-<footer><p>SOLAR POWERED IRRIGATION SYSTEM - Smart Irrigation System • LoRa • IoT • Automation</p></footer>
-</div>
-
-<script>
-const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
-const MQTT_LIVE_TOPIC = "aquasense/moses_kaaga_9x7p2/live";
-const MQTT_ALL_LIVE_TOPIC = "aquasense/+/live";
-const MQTT_CMD_TOPIC = "aquasense/moses_kaaga_9x7p2/cmd";
-const MASTER_ONLINE_TIMEOUT_MS = 30000;
-
-const masterNodes = new Map();
-let selectedMasterId = null;
-let onlineMastersTimer = null;
-
-function login(){
-const username = document.getElementById("username").value.trim();
-const password = document.getElementById("password").value.trim();
-if(username === "aquasense" && password === "irrigation2026"){
-document.getElementById("loginPage").style.display = "none";
-document.getElementById("mainApp").style.display = "block";
-startOnlineMastersWatcher();
-connectMQTT();
-showPage('dashboardPage');
-} else {
-document.getElementById("loginMessage").innerText = "Invalid username or password.";
-}
-}
-function logout(){
-stopOnlineMastersWatcher();
-if(mqttClient){ try{ mqttClient.end(); }catch(e){} }
-document.getElementById("mainApp").style.display = "none";
-document.getElementById("loginPage").style.display = "flex";
-document.getElementById("username").value=""; document.getElementById("password").value="";
-}
-function showPage(pageId){
-document.querySelectorAll(".page").forEach(page => { page.classList.remove("active"); });
-document.getElementById(pageId).classList.add("active");
-}
-let mqttClient = null;
-function connectMQTT(){
-if(mqttClient){ try{ mqttClient.end(true); }catch(e){} }
-setMQTTStatus("Connecting...", false);
-const clientId = "AquaSenseWeb_" + Math.random().toString(16).substring(2,10);
-mqttClient = mqtt.connect(MQTT_BROKER, { clientId:clientId, clean:true, connectTimeout:10000, reconnectPeriod:5000, keepalive:60 });
-mqttClient.on("connect", function(){
-setMQTTStatus("MQTT Connected", true);
-mqttClient.subscribe(MQTT_LIVE_TOPIC, function(error){});
-mqttClient.subscribe(MQTT_ALL_LIVE_TOPIC, function(error){});
+function renderAllCustomerNodes(){
+const allNodes = [];
+masters.forEach((record, masterId) => {
+const nodes = Array.isArray(record.data.nodes) ? record.data.nodes : [];
+nodes.forEach(node => allNodes.push(Object.assign({}, node, {
+id: node.id ?? node.nodeId ?? "--",
+masterId: masterId
+})));
 });
-mqttClient.on("message", function(topic,message){
-if(!topic.endsWith("/live")) return;
-try{
-const data = JSON.parse(message.toString());
-handleMasterTelemetry(topic, data);
-} catch(error){ console.error("Invalid MQTT JSON:", error); }
-});
-mqttClient.on("reconnect", function(){ setMQTTStatus("Reconnecting...", false); });
-mqttClient.on("offline", function(){ setMQTTStatus("MQTT Offline", false); });
-mqttClient.on("error", function(error){ setMQTTStatus("MQTT Error", false); });
-mqttClient.on("close", function(){ setMQTTStatus("MQTT Disconnected", false); });
+document.getElementById("nodeCount").innerText = allNodes.length;
+renderNodes(allNodes);
 }
-function setMQTTStatus(text, connected){
-document.getElementById("mqttStatus").innerText = text;
-const dot = document.getElementById("mqttDot");
-if(connected) dot.classList.add("connected"); else dot.classList.remove("connected");
-}
-
-function extractMasterId(topic, data){
-if(data && (data.masterId || data.master_id || data.master || data.deviceId || data.nodeId)){
-return String(data.masterId || data.master_id || data.master || data.deviceId || data.nodeId);
-}
-const parts = String(topic || "").split("/");
-if(parts.length >= 3 && parts[0] === "aquasense"){
-return parts[1];
-}
-return "moses_kaaga_9x7p2";
-}
-
-function isMasterPayloadOnline(data){
-if(data && data.online === false) return false;
-if(data && data.status && String(data.status).toLowerCase() === "offline") return false;
-return true;
-}
-
-function handleMasterTelemetry(topic, data){
-const masterId = extractMasterId(topic, data);
-const now = Date.now();
-const isOnline = isMasterPayloadOnline(data);
-
-masterNodes.set(masterId, {
-id: masterId,
-topic: topic,
-data: data,
-lastSeen: now,
-online: isOnline
-});
-
-if(!selectedMasterId){
-selectedMasterId = masterId;
-}
-
-renderOnlineMasterNodes();
-
-if(masterId === selectedMasterId || topic === MQTT_LIVE_TOPIC){
-if(!selectedMasterId || topic === MQTT_LIVE_TOPIC){
-selectedMasterId = masterId;
-}
-updateDashboard(data, masterId);
-}
-}
-
-function getOnlineMasterNodes(){
-const now = Date.now();
-const onlineList = [];
-masterNodes.forEach((entry, id) => {
-const fresh = entry.online && (now - entry.lastSeen <= MASTER_ONLINE_TIMEOUT_MS);
-if(fresh){
-onlineList.push(entry);
-}
-});
-return onlineList;
-}
-
-function selectMasterNode(masterId){
-selectedMasterId = masterId;
-const entry = masterNodes.get(masterId);
-renderOnlineMasterNodes();
-if(entry && entry.data){
-updateDashboard(entry.data, masterId);
-}
-}
-
-function renderOnlineMasterNodes(){
-const onlineList = getOnlineMasterNodes();
-const countEl = document.getElementById("onlineMasterCount");
-const listEl = document.getElementById("onlineMasterNodesList");
-const activeLabelEl = document.getElementById("activeMasterLabel");
-
-if(countEl) countEl.innerText = onlineList.length;
-
-if(selectedMasterId && !onlineList.some(m => m.id === selectedMasterId)){
-selectedMasterId = onlineList.length > 0 ? onlineList[0].id : null;
-}
-
-if(activeLabelEl){
-activeLabelEl.innerText = selectedMasterId ? `(Master: ${selectedMasterId})` : "";
-}
-
-if(!listEl) return;
-if(onlineList.length === 0){
-listEl.innerHTML = `<span class="master-empty">No online master nodes detected yet.</span>`;
-return;
-}
-
-listEl.innerHTML = "";
-onlineList.forEach(entry => {
-const chip = document.createElement("button");
-chip.type = "button";
-chip.className = "master-chip" + (entry.id === selectedMasterId ? " active-master" : "");
-chip.onclick = () => selectMasterNode(entry.id);
-chip.innerHTML = `<span class="master-chip-dot"></span><span>${escapeHTML(entry.id)}</span>`;
-listEl.appendChild(chip);
-});
-}
-
-function startOnlineMastersWatcher(){
-stopOnlineMastersWatcher();
-onlineMastersTimer = setInterval(renderOnlineMasterNodes, 5000);
-}
-
-function stopOnlineMastersWatcher(){
-if(onlineMastersTimer){
-clearInterval(onlineMastersTimer);
-onlineMastersTimer = null;
-}
-}
-
-function sendCommand(command){
-if(!mqttClient || !mqttClient.connected){ alert("MQTT is not connected."); return; }
-mqttClient.publish(MQTT_CMD_TOPIC, JSON.stringify(command), {qos:0, retain:false});
-console.log("COMMAND:", command);
-}
-function pumpCommand(state){ sendCommand({ pump:state }); }
-function valveCommand(node, action){ sendCommand({ node:String(node), action:action }); }
-
-function updateDashboard(data, masterId){
-if(masterId){
-selectedMasterId = masterId;
-const activeLabelEl = document.getElementById("activeMasterLabel");
-if(activeLabelEl) activeLabelEl.innerText = `(Master: ${masterId})`;
-renderOnlineMasterNodes();
-}
-const distance = Number(data.waterDistance || 0);
-document.getElementById("waterDistance").innerText = distance.toFixed(1);
-const levelCm = Number(data.waterLevelCm || 0);
-document.getElementById("waterLevelCm").innerText = levelCm.toFixed(1);
-let levelPercent = Number(data.waterLevelPercent || 0);
-if(levelPercent < 0) levelPercent = 0; if(levelPercent > 100) levelPercent = 100;
-document.getElementById("waterLevelPercent").innerText = levelPercent.toFixed(1) + " %";
-docum
-<div id="tankHeight" class="big-value">5MTRS</div>
-<div class="small">Configured tank height</div>
-</div>
-
-<div class="card">
-<h3>🛢 Tank Visual</h3>
-<div class="tank-box">
-<div class="tank"><div id="waterVisual" class="water" style="height:0%"></div></div>
-<div><div id="tankVisualPercent" class="tank-percent">0%</div><p class="small">Real-time ultrasonic</p></div>
-</div>
-</div>
-</div>
-
-<div class="nodes-wrapper">
-<div class="section-title"><h2> Customer Nodes</h2><div><span class="small">Total Nodes: </span><strong id="nodeCount">0</strong></div></div>
-<div id="nodesContainer" class="nodes-grid"></div>
-</div>
-</section>
-
-<section id="aboutPage" class="page">
-<div class="hero"><h1>About AQUASENSE</h1><p>A smart water distribution system and monitoring platform designed to improve water management using automation, sensors, LoRa communication and cloud connectivity.</p></div>
-<div class="info-grid">
-<div class="info-card"><h2> Water Monitoring</h2><p>Monitor flow rate, total water consumption and water distribution in real time.</p></div>
-<div class="info-card"><h2> LoRa Communication</h2><p>Customer nodes communicate with the master controller through long-range LoRa communication.</p></div>
-<div class="info-card"><h2> Automated Control</h2><p>The system controls water valves and the main pump according to system conditions.</p></div>
-<div class="info-card"><h2> Remote Dashboard</h2><p>The dashboard provides real-time monitoring and control through MQTT communication.</p></div>
-</div>
-</section>
-</div>
-<footer><p>SOLAR POWERED IRRIGATION SYSTEM - Smart Irrigation System • LoRa • IoT • Automation</p></footer>
-</div>
-
-<script>
-const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
-const MQTT_LIVE_TOPIC = "aquasense/moses_kaaga_9x7p2/live";
-const MQTT_CMD_TOPIC = "aquasense/moses_kaaga_9x7p2/cmd";
-
-function login(){
-const username = document.getElementById("username").value.trim();
-const password = document.getElementById("password").value.trim();
-if(username === "aquasense" && password === "irrigation2026"){
-document.getElementById("loginPage").style.display = "none";
-document.getElementById("mainApp").style.display = "block";
-connectMQTT();
-showPage('dashboardPage');
-} else {
-document.getElementById("loginMessage").innerText = "Invalid username or password.";
-}
-}
-function logout(){
-if(mqttClient){ try{ mqttClient.end(); }catch(e){} }
-document.getElementById("mainApp").style.display = "none";
-document.getElementById("loginPage").style.display = "flex";
-document.getElementById("username").value=""; document.getElementById("password").value="";
-}
-function showPage(pageId){
-document.querySelectorAll(".page").forEach(page => { page.classList.remove("active"); });
-document.getElementById(pageId).classList.add("active");
-}
-let mqttClient = null;
-function connectMQTT(){
-if(mqttClient){ try{ mqttClient.end(true); }catch(e){} }
-setMQTTStatus("Connecting...", false);
-const clientId = "AquaSenseWeb_" + Math.random().toString(16).substring(2,10);
-mqttClient = mqtt.connect(MQTT_BROKER, { clientId:clientId, clean:true, connectTimeout:10000, reconnectPeriod:5000, keepalive:60 });
-mqttClient.on("connect", function(){
-setMQTTStatus("MQTT Connected", true);
-mqttClient.subscribe(MQTT_LIVE_TOPIC, function(error){});
-});
-mqttClient.on("message", function(topic,message){
-if(topic !== MQTT_LIVE_TOPIC) return;
-try{
-const data = JSON.parse(message.toString());
-updateDashboard(data);
-} catch(error){ console.error("Invalid MQTT JSON:", error); }
-});
-mqttClient.on("reconnect", function(){ setMQTTStatus("Reconnecting...", false); });
-mqttClient.on("offline", function(){ setMQTTStatus("MQTT Offline", false); });
-mqttClient.on("error", function(error){ setMQTTStatus("MQTT Error", false); });
-mqttClient.on("close", function(){ setMQTTStatus("MQTT Disconnected", false); });
-}
-function setMQTTStatus(text, connected){
-document.getElementById("mqttStatus").innerText = text;
-const dot = document.getElementById("mqttDot");
-if(connected) dot.classList.add("connected"); else dot.classList.remove("connected");
-}
-function sendCommand(command){
-if(!mqttClient || !mqttClient.connected){ alert("MQTT is not connected."); return; }
-mqttClient.publish(MQTT_CMD_TOPIC, JSON.stringify(command), {qos:0, retain:false});
-console.log("COMMAND:", command);
-}
-function pumpCommand(state){ sendCommand({ pump:state }); }
-function valveCommand(node, action){ sendCommand({ node:String(node), action:action }); }
-
-function updateDashboard(data){
-const distance = Number(data.waterDistance || 0);
-document.getElementById("waterDistance").innerText = distance.toFixed(1);
-const levelCm = Number(data.waterLevelCm || 0);
-document.getElementById("waterLevelCm").innerText = levelCm.toFixed(1);
-let levelPercent = Number(data.waterLevelPercent || 0);
-if(levelPercent < 0) levelPercent = 0; if(levelPercent > 100) levelPercent = 100;
-document.getElementById("waterLevelPercent").innerText = levelPercent.toFixed(1) + " %";
-document.getElementById("tankVisualPercent").innerText = levelPercent.toFixed(1) + "%";
-document.getElementById("waterVisual").style.height = levelPercent + "%";
-if(data.tankHeight !== undefined){
-document.getElementById("tankHeight").innerText = Number(data.tankHeight).toFixed(0) + " cm";
-}
-let pumpState = data.pumpState || data.pump || "OFF";
-pumpState = String(pumpState).toUpperCase();
-const pumpElement = document.getElementById("pumpStatus");
-if(pumpState === "ON" || pumpState === "1" || pumpState === "TRUE"){
-pumpElement.innerText = "ON"; pumpElement.className = "pump-status pump-on";
-} else {
-pumpElement.innerText = "OFF"; pumpElement.className = "pump-status pump-off";
-}
-const masterFlow = Number(data.masterFlow || 0);
-document.getElementById("masterFlow").innerText = masterFlow.toFixed(2) + " L/min";
-const masterTotal = Number(data.masterTotal || 0);
-document.getElementById("masterTotal").innerText = masterTotal.toFixed(2);
-const nodes = Array.isArray(data.nodes) ? data.nodes : [];
-document.getElementById("nodeCount").innerText = nodes.length;
-renderNodes(nodes);
-}
-
 function renderNodes(nodes){
 const container = document.getElementById("nodesContainer");
 container.innerHTML = "";
 if(nodes.length === 0){
-container.innerHTML = `<div class="card"><h3>No Customer Nodes</h3><p class="small">Waiting for LoRa customer nodes...</p></div>`;
+container.innerHTML = `<div class="card"><h3>No Customer Nodes</h3><p class="small">Waiting for customer node telemetry...</p></div>`;
 return;
 }
 nodes.forEach(node => {
 const id = node.id || "--";
-const flow = Number(node.flow || 0);
-const total = Number(node.total || 0);
-const m1 = Number(node.m1 || 0);
-const m2 = Number(node.m2 || 0);
-const temp = Number(node.temp || 0);
-const hum = Number(node.hum || 0);
-const rssi = Number(node.rssi || 0);
-const online = node.online === true;
+const masterId = node.masterId || selectedMasterId || "KE001";
+const flow = Number(node.flow ?? node.flow_rate ?? 0);
+const total = Number(node.total ?? node.volume_total ?? 0);
+const m1 = Number(node.m1 ?? node.moisture1 ?? node.soil_moisture_1 ?? 0);
+const m2 = Number(node.m2 ?? node.moisture2 ?? node.soil_moisture_2 ?? 0);
+const temp = Number(node.temp ?? node.temperature ?? 0);
+const hum = Number(node.hum ?? node.humidity ?? 0);
+const rssi = Number(node.rssi ?? 0);
+const online = node.online === true || node.online === 1 || String(node.online).toLowerCase() === "true";
 const valve1 = normalizeValve(node.valve1);
 const valve2 = normalizeValve(node.valve2);
 const card = document.createElement("div");
 card.className = "node-card";
 card.innerHTML = `
-<div class="node-title"><h2> Node ${escapeHTML(id)}</h2><span class="status ${online ? "online" : "offline"}">${online ? "ONLINE" : "OFFLINE"}</span></div>
+<div class="node-title"><h2>Node ${escapeHTML(id)} <span class="small">(${escapeHTML(masterId)})</span></h2><span class="status ${online ? "online" : "offline"}">${online ? "ONLINE" : "OFFLINE"}</span></div>
 <div class="node-data">
 <div class="data-box"><div class="data-label">Flow Rate</div><div class="data-value">${flow.toFixed(2)} L/min</div></div>
 <div class="data-box"><div class="data-label">Total Water</div><div class="data-value">${total.toFixed(2)} L</div></div>
@@ -884,13 +514,13 @@ card.innerHTML = `
 <div class="data-box"><div class="data-label">Temp</div><div class="data-value">${temp.toFixed(1)} °C</div></div>
 <div class="data-box"><div class="data-label">Humidity</div><div class="data-value">${hum.toFixed(1)} %</div></div>
 <div class="data-box"><div class="data-label">Signal</div><div class="data-value">${rssi} dBm</div></div>
-<div class="data-box"><div class="data-label">ID</div><div class="data-value">${escapeHTML(id)}</div></div>
+<div class="data-box"><div class="data-label">Node ID</div><div class="data-value">${escapeHTML(id)}</div></div>
 </div>
 <div class="valve-section">
 <h3>⚙ Valve Control</h3>
-<div class="valve-row"><div><strong>Valve 1</strong><br><span class="valve-state ${valve1 === "OPEN" ? "valve-open" : "valve-closed"}">${valve1}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open1')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close1')">CLOSE</button></div></div>
-<div class="valve-row"><div><strong>Valve 2</strong><br><span class="valve-state ${valve2 === "OPEN" ? "valve-open" : "valve-closed"}">${valve2}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open2')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close2')">CLOSE</button></div></div>
-<div style="display:flex; gap:6px; margin-top:6px;"><button class="btn-blue" style="flex:1" onclick="valveCommand('${escapeJS(id)}','open')">OPEN BOTH</button><button class="btn-gray" style="flex:1" onclick="valveCommand('${escapeJS(id)}','close')">CLOSE BOTH</button></div>
+<div class="valve-row"><div><strong>Valve 1</strong><br><span class="valve-state ${valve1 === "OPEN" ? "valve-open" : "valve-closed"}">${valve1}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open1','${escapeJS(masterId)}')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close1','${escapeJS(masterId)}')">CLOSE</button></div></div>
+<div class="valve-row"><div><strong>Valve 2</strong><br><span class="valve-state ${valve2 === "OPEN" ? "valve-open" : "valve-closed"}">${valve2}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open2','${escapeJS(masterId)}')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close2','${escapeJS(masterId)}')">CLOSE</button></div></div>
+<div style="display:flex; gap:6px; margin-top:6px;"><button class="btn-blue" style="flex:1" onclick="valveCommand('${escapeJS(id)}','open','${escapeJS(masterId)}')">OPEN BOTH</button><button class="btn-gray" style="flex:1" onclick="valveCommand('${escapeJS(id)}','close','${escapeJS(masterId)}')">CLOSE BOTH</button></div>
 </div>`;
 container.appendChild(card);
 });
