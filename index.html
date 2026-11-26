@@ -1,541 +1,3714 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOLAR POWERED IRRIGATION SYSTEM </title>
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<style>
-*{
-    box-sizing:border-box;
-    margin:0;
-    padding:0;
-    font-family:Arial,Helvetica,sans-serif;
-}
-body{
-    background:#eef3f7;
-    color:#1f2937;
-    overflow-x:hidden;
-}
-.navbar{
-    background:#00695c;
-    color:white;
-    padding:10px 20px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    position:sticky;
-    top:0;
-    z-index:100;
-    box-shadow:0 3px 10px rgba(0,0,0,.2);
-    height:56px;
-}
-.logo{ font-size:19px; font-weight:bold; }
-.logo span{ color:#80cbc4; }
-.nav-buttons{ display:flex; gap:6px; }
-.nav-buttons button{
-    background:transparent;
-    border:1px solid rgba(255,255,255,.4);
-    color:white;
-    padding:7px 12px;
-    border-radius:6px;
-    cursor:pointer;
-    font-size:13px;
-}
-.nav-buttons button:hover{ background:#00897b; }
-.container{
-    width:98%;
-    max-width:1600px;
-    margin:0 auto;
-}
-.page{ display:none; }
-.page.active{ display:block; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- ========================================================================= -->
+  <!-- SECURITY HEADERS: Preserved strict CSP from hardened index.html           -->
+  <!-- ========================================================================= -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://unpkg.com; style-src 'unsafe-inline'; connect-src wss://broker.hivemq.com:8884; img-src data:" />
+  <title>AquaSense — Solar Powered Irrigation Control</title>
+  <meta name="description" content="Real-time monitoring and control dashboard for the AquaSense solar-powered multi-master irrigation system." />
+  <meta property="og:title" content="AquaSense" />
+  <meta property="og:description" content="Real-time monitoring and control dashboard for the AquaSense solar-powered multi-master irrigation system." />
+  <meta property="og:type" content="website" />
+  <!-- Pinned MQTT.js version from hardened index.html -->
+  <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+  <style>
+    /* ========================================================================= */
+    /* SHADCN-INSPIRED DESIGN SYSTEM TOKENS (LIGHT & DARK MODE)                  */
+    /* ========================================================================= */
+    :root {
+      --bg: #f8fafc;
+      --bg-subtle: #f1f5f9;
+      --card: #ffffff;
+      --card-foreground: #0f172a;
+      --popover: #ffffff;
+      --popover-foreground: #0f172a;
+      --muted: #f1f5f9;
+      --muted-foreground: #64748b;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --input: #cbd5e1;
+      --ring: #0d9488;
+      --primary: #0f766e;
+      --primary-hover: #0d9488;
+      --primary-foreground: #ffffff;
+      --secondary: #f1f5f9;
+      --secondary-foreground: #0f172a;
+      --accent: #0284c7;
+      --success: #16a34a;
+      --success-bg: #dcfce7;
+      --success-fg: #166534;
+      --success-border: #bbf7d0;
+      --warning: #d97706;
+      --warning-bg: #fef3c7;
+      --warning-fg: #92400e;
+      --warning-border: #fde68a;
+      --danger: #dc2626;
+      --danger-bg: #fee2e2;
+      --danger-fg: #991b1b;
+      --danger-border: #fecaca;
+      --info: #2563eb;
+      --info-bg: #dbeafe;
+      --info-fg: #1e40af;
+      --info-border: #bfdbfe;
+      --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+      --shadow-lg: 0 16px 32px -8px rgba(15, 23, 42, 0.14);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --tank-shell: #e2e8f0;
+      --tank-inner: #f1f5f9;
+      --tank-stroke: #94a3b8;
+      --font-sans: "Plus Jakarta Sans", "Avenir Next", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
 
-/* HOME AND ABOUT KEEP OLD SCROLL */
-#homePage.active, #aboutPage.active{
-    display:block;
-    overflow:auto;
-    height:auto;
-}
+    html.dark {
+      --bg: #09090b;
+      --bg-subtle: #18181b;
+      --card: #111114;
+      --card-foreground: #fafafa;
+      --popover: #18181b;
+      --popover-foreground: #fafafa;
+      --muted: #27272a;
+      --muted-foreground: #a1a1aa;
+      --border: #27272a;
+      --border-strong: #3f3f46;
+      --input: #3f3f46;
+      --ring: #14b8a6;
+      --primary: #0d9488;
+      --primary-hover: #14b8a6;
+      --primary-foreground: #ffffff;
+      --secondary: #27272a;
+      --secondary-foreground: #fafafa;
+      --accent: #38bdf8;
+      --success: #22c55e;
+      --success-bg: rgba(22, 163, 74, 0.18);
+      --success-fg: #86efac;
+      --success-border: rgba(34, 197, 94, 0.35);
+      --warning: #f59e0b;
+      --warning-bg: rgba(217, 119, 6, 0.18);
+      --warning-fg: #fcd34d;
+      --warning-border: rgba(245, 158, 11, 0.35);
+      --danger: #ef4444;
+      --danger-bg: rgba(220, 38, 38, 0.18);
+      --danger-fg: #fca5a5;
+      --danger-border: rgba(239, 68, 68, 0.35);
+      --info: #3b82f6;
+      --info-bg: rgba(37, 99, 235, 0.18);
+      --info-fg: #93c5fd;
+      --info-border: rgba(59, 130, 246, 0.35);
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 20px 36px -8px rgba(0, 0, 0, 0.65);
+      --tank-shell: #27272a;
+      --tank-inner: #18181b;
+      --tank-stroke: #52525b;
+    }
 
-/* ================= DASHBOARD SINGLE SCREEN ================= */
-#dashboardPage.active{
-    display:flex;
-    flex-direction:column;
-    height:calc(100vh - 56px); /* navbar height */
-    overflow:hidden;
-    padding:10px 0 6px 0;
-}
-.dashboard-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:8px;
-    flex-wrap:wrap;
-    gap:8px;
-}
-.dashboard-header h1{ color:#00695c; font-size:20px; }
-.dashboard-header p{ font-size:12px; }
-.connection{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    background:white;
-    padding:6px 12px;
-    border-radius:20px;
-    box-shadow:0 2px 8px rgba(0,0,0,.1);
-    font-size:12px;
-}
-.dot{ width:10px; height:10px; border-radius:50%; background:#f44336; }
-.dot.connected{ background:#00c853; }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-/* TOP GRID 5 COLS */
-.grid{
-    display:grid;
-    grid-template-columns:repeat(5,1fr);
-    gap:10px;
-    margin-bottom:10px;
-}
-.card{
-    background:white;
-    border-radius:10px;
-    padding:12px;
-    box-shadow:0 2px 8px rgba(0,0,0,.08);
-}
-.card h3{ color:#00695c; margin-bottom:6px; font-size:13px; }
-.big-value{ font-size:20px; font-weight:bold; margin:4px 0; }
-.small{ font-size:11px; color:#6b7280; }
-.icon{ font-size:20px; }
-.tank-box{ display:flex; align-items:center; gap:12px; }
-.tank{
-    width:56px;
-    height:95px;
-    border:3px solid #37474f;
-    border-radius:6px 6px 14px 14px;
-    position:relative;
-    overflow:hidden;
-    background:#e0f2f1;
-}
-.water{
-    position:absolute;
-    bottom:0;
-    width:100%;
-    background:#2196f3;
-    transition:height .7s;
-}
-.tank-percent{ font-size:20px; font-weight:bold; }
+    html, body {
+      min-height: 100%;
+      background-color: var(--bg);
+      color: var(--card-foreground);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
 
-/* PUMP */
-.pump-status{ display:inline-block; padding:5px 10px; border-radius:20px; font-weight:bold; font-size:11px; }
-.pump-on{ background:#c8e6c9; color:#1b5e20; }
-.pump-off{ background:#ffcdd2; color:#b71c1c; }
-button{ border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:12px; }
-.btn-green{ background:#00a884; color:white; }
-.btn-red{ background:#e53935; color:white; }
-.btn-blue{ background:#1976d2; color:white; }
-.btn-gray{ background:#607d8b; color:white; }
-button:hover{ opacity:.85; }
+    .tabular {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
 
-/* NODES SECTION FILLS REST */
-.section-title{
-    margin:4px 0 6px;
-    color:#00695c;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    font-size:13px;
-}
-.nodes-wrapper{
-    flex:1;
-    overflow:hidden;
-    display:flex;
-    flex-direction:column;
-}
-.nodes-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(290px,1fr));
-    gap:10px;
-    overflow-y:auto;
-    flex:1;
-    padding-right:4px;
-    padding-bottom:4px;
-}
-.nodes-grid::-webkit-scrollbar{ width:6px; }
-.nodes-grid::-webkit-scrollbar-thumb{ background:#b0bec5; border-radius:10px; }
-.node-card{
-    background:white;
-    border-radius:10px;
-    padding:12px;
-    box-shadow:0 2px 8px rgba(0,0,0,.1);
-    border-top:4px solid #00695c;
-}
-.node-title{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-.node-title h2{ color:#00695c; font-size:14px; }
-.status{ padding:4px 8px; border-radius:12px; font-size:10px; font-weight:bold; }
-.online{ background:#c8e6c9; color:#1b5e20; }
-.offline{ background:#ffcdd2; color:#b71c1c; }
-.node-data{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
-.data-box{ background:#f5f7f9; padding:8px; border-radius:6px; }
-.data-label{ font-size:10px; color:#6b7280; }
-.data-value{ font-size:13px; font-weight:bold; margin-top:2px; }
-.valve-section{ border-top:1px solid #ddd; margin-top:8px; padding-top:8px; }
-.valve-section h3{ font-size:12px; margin-bottom:6px; }
-.valve-row{ display:flex; justify-content:space-between; align-items:center; background:#f5f7f9; padding:8px; margin-bottom:6px; border-radius:6px; }
-.valve-state{ font-weight:bold; padding:3px 8px; border-radius:12px; font-size:10px; }
-.valve-open{ background:#c8e6c9; color:#1b5e20; }
-.valve-closed{ background:#ffcdd2; color:#b71c1c; }
-.valve-buttons{ display:flex; gap:4px; }
-.valve-buttons button{ padding:5px 7px; font-size:10px; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
 
-/* LOGIN, HOME, ABOUT SAME AS YOURS BUT COMPACT */
-.login-container{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#00695c,#26a69a); }
-.login-box{ background:white; width:95%; max-width:420px; padding:35px; border-radius:15px; box-shadow:0 8px 30px rgba(0,0,0,.25); }
-.login-box h1{ text-align:center; color:#00695c; margin-bottom:8px; }
-.login-box p{ text-align:center; color:#777; margin-bottom:25px; }
-.input-group{ margin-bottom:15px; }
-.input-group label{ display:block; margin-bottom:6px; font-weight:bold; }
-.input-group input{ width:100%; padding:12px; border:1px solid #ccc; border-radius:7px; }
-.login-btn{ width:100%; background:#00695c; color:white; padding:13px; }
-.login-message{ text-align:center; margin-top:12px; color:#d32f2f; }
-.hero{ background:linear-gradient(135deg,#00695c,#26a69a); color:white; padding:50px 30px; border-radius:15px; text-align:center; }
-.hero h1{ font-size:38px; margin-bottom:10px; }
-.hero p{ font-size:16px; max-width:800px; margin:auto; line-height:1.6; }
-.info-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:15px; margin-top:20px; }
-.info-card{ background:white; padding:20px; border-radius:12px; box-shadow:0 3px 12px rgba(0,0,0,.1); }
-.info-card h2{ color:#00695c; margin-bottom:8px; font-size:16px; }
-footer{ background:#263238; color:white; text-align:center; padding:12px; font-size:12px; }
+    /* ========================================================================= */
+    /* SHADCN-STYLE COMPONENTS                                                   */
+    /* ========================================================================= */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1;
+      padding: 9px 14px;
+      min-height: 36px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+                  border-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+                  color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 150ms ease;
+    }
 
-@media(max-width:1200px){
-    .grid{ grid-template-columns:repeat(3,1fr); }
-}
-@media(max-width:700px){
-    #dashboardPage.active{ height:auto; overflow:auto; }
-    .navbar{ flex-direction:column; height:auto; gap:8px; padding:10px; }
-    .grid{ grid-template-columns:1fr 1fr; }
-    .nodes-grid{ overflow:visible; }
-}
-</style>
+    .btn:focus-visible,
+    .switch:focus-visible,
+    .combobox-trigger:focus-visible,
+    .input:focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 2px;
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn-sm {
+      min-height: 32px;
+      padding: 6px 11px;
+      font-size: 12px;
+    }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: var(--primary-foreground);
+    }
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background-color: var(--secondary);
+      color: var(--secondary-foreground);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover {
+      background-color: var(--border);
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      color: var(--card-foreground);
+      border-color: var(--border);
+    }
+    .btn-outline:hover {
+      background-color: var(--muted);
+    }
+
+    .btn-destructive {
+      background-color: var(--danger);
+      color: #ffffff;
+    }
+    .btn-destructive:hover {
+      filter: brightness(0.92);
+    }
+
+    .btn-ghost {
+      background-color: transparent;
+      color: var(--muted-foreground);
+    }
+    .btn-ghost:hover {
+      background-color: var(--muted);
+      color: var(--card-foreground);
+    }
+
+    .card {
+      background-color: var(--card);
+      color: var(--card-foreground);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-pad {
+      padding: 18px 20px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted-foreground);
+      letter-spacing: -0.01em;
+    }
+
+    .card-heading {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--card-foreground);
+      letter-spacing: -0.015em;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      color: var(--card-foreground);
+    }
+
+    .metric-sub {
+      font-size: 12px;
+      color: var(--muted-foreground);
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.3;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-success {
+      background-color: var(--success-bg);
+      color: var(--success-fg);
+      border-color: var(--success-border);
+    }
+    .badge-warning {
+      background-color: var(--warning-bg);
+      color: var(--warning-fg);
+      border-color: var(--warning-border);
+    }
+    .badge-danger {
+      background-color: var(--danger-bg);
+      color: var(--danger-fg);
+      border-color: var(--danger-border);
+    }
+    .badge-info {
+      background-color: var(--info-bg);
+      color: var(--info-fg);
+      border-color: var(--info-border);
+    }
+    .badge-neutral {
+      background-color: var(--muted);
+      color: var(--muted-foreground);
+      border-color: var(--border);
+    }
+
+    .input {
+      width: 100%;
+      height: 38px;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--input);
+      background-color: var(--card);
+      color: var(--card-foreground);
+      font-family: inherit;
+      font-size: 13px;
+      transition: border-color 150ms ease;
+    }
+    .input::placeholder {
+      color: var(--muted-foreground);
+    }
+
+    /* Tactile Accessible ON / OFF Switch (role="switch") */
+    .switch-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .switch-state-text {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      min-width: 32px;
+      text-align: right;
+      color: var(--muted-foreground);
+    }
+
+    .switch-state-text.is-on {
+      color: var(--success-fg);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 48px;
+      height: 26px;
+      padding: 2px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-strong);
+      background-color: var(--muted);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+                  border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 150ms ease;
+    }
+
+    .switch[aria-checked="true"] {
+      background-color: var(--success);
+      border-color: var(--success);
+    }
+
+    .switch[aria-busy="true"] {
+      border-color: var(--info);
+      background-color: var(--info-bg);
+      cursor: progress;
+    }
+
+    .switch:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .switch-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 9999px;
+      background-color: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      transform: translateX(0);
+      transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .switch[aria-checked="true"] .switch-thumb {
+      transform: translateX(22px);
+    }
+
+    .switch[aria-busy="true"] .switch-thumb {
+      transform: translateX(11px);
+    }
+
+    /* ========================================================================= */
+    /* TOP NAVIGATION BAR & MASTER NODE COMBOBOX                                 */
+    /* ========================================================================= */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background-color: var(--card);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 60px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      min-width: 0;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--card-foreground);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0f766e, #0284c7);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .nav-link {
+      background: transparent;
+      border: none;
+      padding: 7px 12px;
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: color 150ms ease, background-color 150ms ease;
+    }
+
+    .nav-link:hover {
+      color: var(--card-foreground);
+      background-color: var(--muted);
+    }
+
+    .nav-link.is-active {
+      color: var(--card-foreground);
+      background-color: var(--muted);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    /* Master Node Combobox */
+    .combobox {
+      position: relative;
+      min-width: 240px;
+      max-width: 320px;
+    }
+
+    .combobox-trigger {
+      width: 100%;
+      height: 38px;
+      padding: 0 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background-color: var(--card);
+      color: var(--card-foreground);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 150ms ease, background-color 150ms ease;
+    }
+
+    .combobox-trigger:hover {
+      background-color: var(--bg-subtle);
+      border-color: var(--border-strong);
+    }
+
+    .combobox-trigger-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .combobox-trigger-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .combobox-popover {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      width: 320px;
+      max-width: calc(100vw - 24px);
+      background-color: var(--popover);
+      color: var(--popover-foreground);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      z-index: 60;
+      overflow: hidden;
+      display: none;
+    }
+
+    .combobox-popover.open {
+      display: block;
+    }
+
+    .combobox-search-wrap {
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .combobox-search-input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: var(--card-foreground);
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .combobox-list {
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 6px;
+    }
+
+    .combobox-option {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--card-foreground);
+      font-family: inherit;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .combobox-option:hover,
+    .combobox-option.is-highlighted {
+      background-color: var(--muted);
+    }
+
+    .combobox-option[aria-selected="true"] {
+      background-color: var(--bg-subtle);
+      font-weight: 700;
+    }
+
+    .combobox-empty {
+      padding: 18px 12px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+
+    /* Live Telemetry Status Indicators */
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 9999px;
+      display: inline-block;
+      flex-shrink: 0;
+      background-color: var(--danger);
+    }
+    .status-dot.is-live {
+      background-color: var(--success);
+    }
+    .status-dot.is-warn {
+      background-color: var(--warning);
+    }
+
+    .status-cluster {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ========================================================================= */
+    /* LOGIN VIEW                                                                */
+    /* ========================================================================= */
+    .login-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at 18% 20%, rgba(13, 148, 136, 0.12), transparent 45%),
+        radial-gradient(circle at 82% 80%, rgba(2, 132, 199, 0.12), transparent 45%),
+        var(--bg);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 32px;
+    }
+
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .login-brand h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .login-brand p {
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+
+    .field-group {
+      margin-bottom: 16px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--card-foreground);
+    }
+
+    .password-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-wrap .input {
+      padding-right: 40px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 4px;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .password-toggle:hover {
+      color: var(--card-foreground);
+      background-color: var(--muted);
+    }
+
+    .login-error {
+      display: none;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      background-color: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger-fg);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* ========================================================================= */
+    /* MAIN SHELL & PAGES                                                        */
+    /* ========================================================================= */
+    .app-main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    /* Dashboard Header Strip */
+    .dash-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .dash-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+
+    .dash-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted-foreground);
+      margin-top: 4px;
+    }
+
+    /* Fault / Alarm Alert Banner */
+    .alarm-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      border-radius: var(--radius-lg);
+      background-color: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      color: var(--warning-fg);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .alarm-banner.is-visible {
+      display: flex;
+    }
+
+    /* Primary Dashboard Grid: Tank Visual + 4 KPI / Pump Cards */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: 390px repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+      align-items: stretch;
+    }
+
+    .kpi-stack {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      grid-auto-flow: column;
+      grid-column: span 2;
+      gap: 16px;
+    }
+
+    /* ========================================================================= */
+    /* REALISTIC ANIMATED WATER TANK VISUALIZATION                               */
+    /* ========================================================================= */
+    .tank-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 18px 20px;
+    }
+
+    .tank-stage {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .tank-svg-wrap {
+      position: relative;
+      width: 152px;
+      height: 209px;
+      flex-shrink: 0;
+    }
+
+    .tank-svg {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible;
+    }
+
+    .tank-svg-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    /* Inner tank water clip matching SVG rect x=24 y=34 width=112 height=164 rx=14 on 160x220 viewBox */
+    .tank-water-cavity {
+      position: absolute;
+      left: 15%;
+      top: 15.4545%;
+      width: 70%;
+      height: 74.5455%;
+      border-radius: 13.3px;
+      overflow: hidden;
+      isolation: isolate;
+      transform: translateZ(0);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Water container that moves vertically based on level (always blue) */
+    .water-level {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: linear-gradient(to bottom, #0284c7, #0369a1);
+      transition: height 0.4s cubic-bezier(0.25, 1, 0.5, 1), bottom 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+      will-change: height, bottom;
+    }
+
+    /* HTML wave wrapper tracks positioned on top of the water block */
+    .wave-layer {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      width: 200%;
+      height: 20px;
+      margin-bottom: -1px;
+      pointer-events: none;
+      will-change: transform;
+    }
+
+    .wave-layer svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .wave-back {
+      opacity: 0.6;
+      animation: moveWave 5s linear infinite reverse;
+    }
+
+    .wave-front {
+      animation: moveWave 3s linear infinite;
+    }
+
+    @keyframes moveWave {
+      0% { transform: translate3d(0, 0, 0); }
+      100% { transform: translate3d(-50%, 0, 0); }
+    }
+
+    .tank-stats {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tank-percent-readout {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .tank-kv-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .tank-kv {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      gap: 8px;
+    }
+
+    .tank-kv-label {
+      color: var(--muted-foreground);
+      white-space: nowrap;
+    }
+
+    .tank-kv-val {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Visual Inflow / Outflow Indicators on Tank & Cards */
+    .tank-port {
+      color: var(--tank-stroke);
+      opacity: 0.45;
+      transition: color 0.25s ease, opacity 0.25s ease;
+    }
+
+    .tank-port.is-active-in {
+      color: #0284c7;
+      opacity: 1;
+    }
+
+    .tank-port.is-active-out {
+      color: #d97706;
+      opacity: 1;
+    }
+
+    @keyframes nudgeRight {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(2.5px); }
+    }
+
+    @keyframes nudgeLeft {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(-2.5px); }
+    }
+
+    .tank-port.is-active-in .port-arrow {
+      animation: nudgeRight 1.1s ease-in-out infinite;
+    }
+
+    .tank-port.is-active-out .port-arrow {
+      animation: nudgeLeft 1.1s ease-in-out infinite;
+    }
+
+    .tank-flow-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .flow-pill-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .flow-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background-color: var(--muted);
+      color: var(--muted-foreground);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .flow-pill.is-in {
+      background-color: var(--info-bg);
+      color: var(--info-fg);
+      border-color: var(--info-border);
+    }
+
+    .flow-pill.is-out {
+      background-color: var(--warning-bg);
+      color: var(--warning-fg);
+      border-color: var(--warning-border);
+    }
+
+    .flow-badge-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* ========================================================================= */
+    /* CUSTOMER NODES SECTION                                                    */
+    /* ========================================================================= */
+    .section-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title-group {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .section-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+    }
+
+    .section-subtitle {
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+
+    .toolbar-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      position: relative;
+      width: 210px;
+    }
+
+    .search-box .input {
+      height: 34px;
+      padding-left: 32px;
+      font-size: 12px;
+    }
+
+    .search-box-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted-foreground);
+      pointer-events: none;
+    }
+
+    .segmented {
+      display: inline-flex;
+      padding: 3px;
+      background-color: var(--muted);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      gap: 2px;
+    }
+
+    .segmented-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted-foreground);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 150ms ease, color 150ms ease;
+    }
+
+    .segmented-btn.is-active {
+      background-color: var(--card);
+      color: var(--card-foreground);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nodes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    .node-card {
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .node-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .node-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .node-meta {
+      font-size: 12px;
+      color: var(--muted-foreground);
+      margin-top: 2px;
+    }
+
+    .telemetry-table {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      background-color: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .telemetry-cell {
+      background-color: var(--card);
+      padding: 9px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .telemetry-label {
+      font-size: 11px;
+      color: var(--muted-foreground);
+    }
+
+    .telemetry-val {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--card-foreground);
+    }
+
+    .valve-panel {
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .valve-panel-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted-foreground);
+      letter-spacing: 0.01em;
+    }
+
+    .valve-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border);
+    }
+
+    .valve-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .valve-name {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .valve-actions-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      padding: 40px 24px;
+      text-align: center;
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-lg);
+      background-color: var(--card);
+    }
+
+    .empty-state h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--muted-foreground);
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    /* ========================================================================= */
+    /* HOME & ABOUT PAGES                                                        */
+    /* ========================================================================= */
+    .hero-panel {
+      padding: 40px 32px;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, rgba(15, 118, 110, 0.09), rgba(2, 132, 199, 0.08));
+    }
+
+    .hero-panel h1 {
+      font-size: clamp(24px, 3vw, 34px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      max-width: 24ch;
+      margin-bottom: 10px;
+    }
+
+    .hero-panel p {
+      font-size: 15px;
+      color: var(--muted-foreground);
+      max-width: 68ch;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .info-card {
+      padding: 20px;
+    }
+
+    .info-card h2 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .info-card p {
+      font-size: 13px;
+      color: var(--muted-foreground);
+      line-height: 1.6;
+    }
+
+    .app-footer {
+      max-width: 1440px;
+      margin: 24px auto 0;
+      padding: 16px 20px 28px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+
+    /* ========================================================================= */
+    /* SHADCN ALERT DIALOG & TOASTS                                              */
+    /* ========================================================================= */
+    .dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background-color: rgba(9, 9, 11, 0.6);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .dialog-backdrop.open {
+      display: flex;
+    }
+
+    .dialog-panel {
+      width: 100%;
+      max-width: 420px;
+      padding: 22px 24px;
+      background-color: var(--card);
+      color: var(--card-foreground);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .dialog-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .dialog-desc {
+      font-size: 13px;
+      color: var(--muted-foreground);
+      line-height: 1.55;
+      margin-bottom: 18px;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .toast-region {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 360px;
+      width: calc(100vw - 36px);
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      background-color: var(--card);
+      color: var(--card-foreground);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      font-size: 13px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .toast-danger {
+      border-color: var(--danger-border);
+      background-color: var(--danger-bg);
+      color: var(--danger-fg);
+    }
+
+    .toast-success {
+      border-color: var(--success-border);
+      background-color: var(--success-bg);
+      color: var(--success-fg);
+    }
+
+    /* 1:1 Master-Topic Mapping Dialog & Combobox Footer */
+    .combobox-footer {
+      padding: 6px;
+      border-top: 1px solid var(--border);
+      background-color: var(--bg-subtle);
+    }
+
+    .topic-dialog-panel {
+      width: 100%;
+      max-width: 640px;
+      max-height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      padding: 22px 24px;
+      background-color: var(--card);
+      color: var(--card-foreground);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .mapping-form {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding: 14px;
+      border-radius: var(--radius-md);
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border);
+    }
+
+    .mapping-form-full {
+      grid-column: 1 / -1;
+    }
+
+    .mapping-form-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+
+    .mapping-error {
+      grid-column: 1 / -1;
+      display: none;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      background-color: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger-fg);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .mapping-list {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 280px;
+      padding-right: 2px;
+    }
+
+    .mapping-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background-color: var(--card);
+    }
+
+    .mapping-row.is-active {
+      border-color: var(--primary);
+      background-color: var(--bg-subtle);
+    }
+
+    .mapping-meta {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .mapping-id-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .mapping-topics-line {
+      margin-top: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted-foreground);
+      word-break: break-all;
+      line-height: 1.45;
+    }
+
+    .mapping-row-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 1080px), (orientation: portrait) {
+      .overview-grid {
+        grid-template-columns: 1fr;
+      }
+      .kpi-stack {
+        grid-column: span 1;
+        grid-auto-flow: row;
+        grid-template-rows: auto;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .topbar-inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 10px 14px;
+      }
+      .topbar-left {
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .topbar-right {
+        justify-content: space-between;
+      }
+      .combobox {
+        flex: 1;
+        min-width: 180px;
+        max-width: none;
+      }
+      .kpi-stack {
+        grid-template-columns: 1fr;
+      }
+      .nodes-grid {
+        grid-template-columns: 1fr;
+      }
+      .tank-stage {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .tank-svg-wrap {
+        margin: 0 auto;
+      }
+      .mapping-form {
+        grid-template-columns: 1fr;
+      }
+      .mapping-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
 </head>
 <body>
-<div id="loginPage" class="login-container">
-<div class="login-box">
-<h1>💧 AQUASENSE</h1>
-<p>SOLAR POWERED IRRIGATION SYSTEM</p>
-<div class="input-group"><label>Username</label><input type="text" id="username" placeholder="Enter username"></div>
-<div class="input-group"><label>Password</label><input type="password" id="password" placeholder="Enter password"></div>
-<button class="login-btn" onclick="login()">LOGIN</button>
-<div id="loginMessage" class="login-message"></div>
-</div>
-</div>
+  <!-- ========================================================================= -->
+  <!-- LOGIN VIEW                                                                -->
+  <!-- ========================================================================= -->
+  <div id="loginPage" class="login-shell">
+    <div class="card login-card">
+      <div class="login-brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1>AquaSense</h1>
+          <p>Solar Powered Irrigation Control</p>
+        </div>
+      </div>
 
-<div id="mainApp" style="display:none">
-<nav class="navbar">
-<div class="logo">💧 AQUASENSE <span>SOLAR POWERED IRRIGATION SYSTEM</span></div>
-<div class="nav-buttons">
-<button onclick="showPage('homePage')">Home</button>
-<button onclick="showPage('dashboardPage')">Dashboard</button>
-<button onclick="showPage('aboutPage')">About</button>
-<button onclick="logout()">Logout</button>
-</div>
-</nav>
+      <form id="loginForm" novalidate>
+        <div class="field-group">
+          <label class="field-label" for="username">Username</label>
+          <input class="input" type="text" id="username" autocomplete="username" placeholder="Enter username" required />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="password">Password</label>
+          <div class="password-wrap">
+            <input class="input" type="password" id="password" autocomplete="current-password" placeholder="Enter password" required />
+            <button type="button" id="togglePasswordBtn" class="password-toggle" aria-label="Show password" aria-pressed="false">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Sign in to Dashboard</button>
+        <div id="loginMessage" class="login-error" role="alert"></div>
+      </form>
+    </div>
+  </div>
 
-<div class="container">
+  <!-- ========================================================================= -->
+  <!-- MAIN APPLICATION SHELL                                                    -->
+  <!-- ========================================================================= -->
+  <div id="mainApp" style="display:none;">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="topbar-left">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+              </svg>
+            </span>
+            <span>AquaSense</span>
+          </div>
 
-<section id="homePage" class="page active">
-<div class="hero"><h1>💧 AQUASENSE</h1><p>SOLAR POWERED IRRIGATION SYSTEM for efficient, automated and intelligent management of water distribution, monitoring and control.</p></div>
-<div class="info-grid">
-<div class="info-card"><h2> Vision</h2><p>To provide intelligent and sustainable water distribution through automation and real-time monitoring.</p></div>
-<div class="info-card"><h2> Mission</h2><p>To reduce water losses, improve distribution efficiency and provide reliable monitoring and control of water systems.</p></div>
-<div class="info-card"><h2> Innovation</h2><p>AQUASENSE combines LoRa communication, flow monitoring, automatic valves, tank-level monitoring, pump control and cloud monitoring.</p></div>
-</div>
-</section>
+          <nav class="nav-links" aria-label="Primary navigation">
+            <button type="button" class="nav-link" data-page="homePage">Home</button>
+            <button type="button" class="nav-link is-active" data-page="dashboardPage">Dashboard</button>
+            <button type="button" class="nav-link" data-page="aboutPage">About</button>
+          </nav>
+        </div>
 
-<section id="dashboardPage" class="page">
-<div class="dashboard-header">
-<div><h1>AQUASENSE Dashboard</h1><p class="small">Real-time irrigation monitoring and control</p></div>
-<div class="connection"><div id="mqttDot" class="dot"></div><span id="mqttStatus">MQTT Disconnected</span></div>
-</div>
+        <div class="topbar-right">
+          <!-- =============================================================== -->
+          <!-- MASTER NODE COMBOBOX (ACCESSIBLE SEARCHABLE SELECTOR)           -->
+          <!-- =============================================================== -->
+          <div class="combobox" id="masterCombobox">
+            <button
+              type="button"
+              id="masterComboboxTrigger"
+              class="combobox-trigger"
+              role="combobox"
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-controls="masterComboboxList"
+              aria-label="Select Master Node"
+            >
+              <span class="combobox-trigger-label">
+                <span id="comboboxTriggerDot" class="status-dot is-warn" aria-hidden="true"></span>
+                <span id="comboboxTriggerText" class="combobox-trigger-text">Master: Waiting...</span>
+              </span>
+              <span id="comboboxMasterCount" class="badge badge-neutral tabular">0</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m7 15 5 5 5-5"></path>
+                <path d="m7 9 5-5 5 5"></path>
+              </svg>
+            </button>
 
-<div class="grid">
-<div class="card">
-<div class="icon">💧 Tank Water Level</div>
-<div id="waterLevelPercent" class="big-value">0 %</div>
-<div class="small">Height: <span id="waterLevelCm">0</span> cm | Dist: <span id="waterDistance">0</span> cm</div>
-</div>
+            <div id="masterComboboxPopover" class="combobox-popover">
+              <div class="combobox-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--muted-foreground); flex-shrink:0;">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.3-4.3"></path>
+                </svg>
+                <input
+                  type="text"
+                  id="masterComboboxSearch"
+                  class="combobox-search-input"
+                  placeholder="Filter master nodes..."
+                  aria-label="Filter master nodes"
+                  autocomplete="off"
+                />
+              </div>
+              <div id="masterComboboxList" class="combobox-list" role="listbox" aria-label="Configured master nodes"></div>
+              <div class="combobox-footer">
+                <button type="button" id="comboboxManageTopicsBtn" class="btn btn-ghost btn-sm" style="width:100%; justify-content:flex-start;">
+                  Configure 1:1 Master Topics...
+                </button>
+              </div>
+            </div>
+          </div>
 
-<div class="card">
-<div class="icon"> Pump</div>
-<div id="pumpStatus" class="pump-status pump-off">OFF</div>
-<div style="margin-top:8px; display:flex; gap:6px;">
-<button class="btn-green" style="flex:1" onclick="pumpCommand('on')">ON</button>
-<button class="btn-red" style="flex:1" onclick="pumpCommand('off')">OFF</button>
-</div>
-</div>
+          <button type="button" id="manageTopicsBtn" class="btn btn-outline btn-sm" title="Configure 1:1 Master-to-Topic mappings">Topics</button>
 
-<div class="card">
-<div class="icon"> Master Flow</div>
-<div id="masterFlow" class="big-value">0 L/min</div>
-<div class="small">Total: <span id="masterTotal">0</span> L</div>
-</div>
+          <button type="button" id="themeToggleBtn" class="btn btn-outline btn-icon" aria-label="Toggle color theme" title="Toggle theme">
+            <svg id="themeIconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+            </svg>
+            <svg id="themeIconMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+            </svg>
+          </button>
 
-<div class="card">
-<div class="icon">Tank Capacity</div>
-<div id="tankHeight" class="big-value">5MTRS</div>
-<div class="small">Configured tank height</div>
-</div>
+          <button type="button" id="logoutBtn" class="btn btn-outline btn-sm">Logout</button>
+        </div>
+      </div>
+    </header>
 
-<div class="card">
-<h3>🛢 Tank Visual</h3>
-<div class="tank-box">
-<div class="tank"><div id="waterVisual" class="water" style="height:0%"></div></div>
-<div><div id="tankVisualPercent" class="tank-percent">0%</div><p class="small">Real-time ultrasonic</p></div>
-</div>
-</div>
-</div>
+    <main class="app-main">
+      <!-- HOME VIEW -->
+      <section id="homePage" class="page">
+        <div class="card hero-panel">
+          <h1>Solar-Powered Smart Irrigation Management</h1>
+          <p>
+            AquaSense coordinates multi-master LoRa controllers, ultrasonic water storage monitoring,
+            flow metering, and manual zone valve actuation across distributed agricultural sites.
+          </p>
+        </div>
+        <div class="info-grid">
+          <div class="card info-card">
+            <h2>Vision</h2>
+            <p>Provide intelligent, sustainable water distribution through real-time telemetry and deterministic control.</p>
+          </div>
+          <div class="card info-card">
+            <h2>Mission</h2>
+            <p>Reduce distribution losses, prevent dry-run pump faults, and give operators clear visibility across every master node.</p>
+          </div>
+          <div class="card info-card">
+            <h2>Architecture</h2>
+            <p>Combines long-range LoRa customer nodes, ultrasonic tank gauging, MQTT cloud telemetry, and hardened browser controls.</p>
+          </div>
+        </div>
+      </section>
 
-<div class="nodes-wrapper">
-<div class="section-title"><h2> Master Nodes</h2><div><span class="small">Masters: </span><strong id="masterCount">0</strong><span class="small"> · Select a master to view its top summary</span></div></div>
-<div id="mastersContainer" class="nodes-grid"></div>
-<div class="section-title"><h2> Customer Nodes</h2><div><span class="small">Total Nodes: </span><strong id="nodeCount">0</strong></div></div>
-<div id="nodesContainer" class="nodes-grid"></div>
-</div>
-</section>
+      <!-- UNIFIED MULTI-MASTER DASHBOARD VIEW -->
+      <section id="dashboardPage" class="page active">
+        <div class="dash-header">
+          <div>
+            <h1 class="dash-title">Irrigation Telemetry &amp; Control</h1>
+            <div class="dash-meta">
+              <span>Active Master: <strong id="activeMasterLabel" class="tabular">--</strong></span>
+              <span aria-hidden="true">&middot;</span>
+              <span>Topic: <strong id="activeMasterTopicLabel" class="tabular">--</strong></span>
+              <span aria-hidden="true">&middot;</span>
+              <span>Last updated: <span id="lastUpdatedLabel" class="tabular">Never</span></span>
+            </div>
+          </div>
 
-<section id="aboutPage" class="page">
-<div class="hero"><h1>About AQUASENSE</h1><p>A smart water distribution system and monitoring platform designed to improve water management using automation, sensors, LoRa communication and cloud connectivity.</p></div>
-<div class="info-grid">
-<div class="info-card"><h2> Water Monitoring</h2><p>Monitor flow rate, total water consumption and water distribution in real time.</p></div>
-<div class="info-card"><h2> LoRa Communication</h2><p>Customer nodes communicate with the master controller through long-range LoRa communication.</p></div>
-<div class="info-card"><h2> Automated Control</h2><p>The system controls water valves and the main pump according to system conditions.</p></div>
-<div class="info-card"><h2> Remote Dashboard</h2><p>The dashboard provides real-time monitoring and control through MQTT communication.</p></div>
-</div>
-</section>
-</div>
-<footer><p>SOLAR POWERED IRRIGATION SYSTEM - Smart Irrigation System • LoRa • IoT • Automation</p></footer>
-</div>
+          <div class="status-cluster">
+            <span id="mqttBadge" class="badge badge-danger">
+              <span id="mqttDot" class="status-dot" aria-hidden="true"></span>
+              <span id="mqttStatus">MQTT Disconnected</span>
+            </span>
+            <span id="masterBadge" class="badge badge-neutral">
+              <span id="masterDot" class="status-dot is-warn" aria-hidden="true"></span>
+              <span id="masterStatus">Master: no data yet</span>
+            </span>
+          </div>
+        </div>
 
-<script>
-const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
-const MQTT_LIVE_TOPIC = "aquasense/+/live";
-const MQTT_CMD_TOPIC = "aquasense/{masterId}/cmd";
-const LEGACY_LIVE_TOPIC = "aquasense/moses_kaaga_9x7p2/live";
-const LEGACY_CMD_TOPIC = "aquasense/moses_kaaga_9x7p2/cmd";
+        <!-- Alarm / Fault Banner (pumpFault & tankSensorOk === false) -->
+        <div id="alarmBar" class="alarm-banner" role="alert">
+          <span id="alarmText"></span>
+        </div>
 
-// One dashboard record per master. Master IDs are taken from the MQTT topic
-// first, then from the JSON masterId/id field.
-const masters = new Map();
-let selectedMasterId = null;
+        <!-- Unified Overview Grid: Animated Tank + 4 Telemetry / Control Cards -->
+        <div class="overview-grid">
+          <!-- =============================================================== -->
+          <!-- REALISTIC ANIMATED WATER TANK VISUALIZATION CARD                -->
+          <!-- =============================================================== -->
+          <div class="card tank-card">
+            <div class="card-header" style="margin-bottom:4px;">
+              <div>
+                <div class="card-title">Water Storage Vessel</div>
+                <div class="card-heading">Real-Time Ultrasonic Level</div>
+              </div>
+              <span id="tankLevelStateBadge" class="badge badge-neutral">No Data</span>
+            </div>
 
-function login(){
-const username = document.getElementById("username").value.trim();
-const password = document.getElementById("password").value.trim();
-if(username === "aquasense" && password === "irrigation2026"){
-document.getElementById("loginPage").style.display = "none";
-document.getElementById("mainApp").style.display = "block";
-connectMQTT();
-showPage('dashboardPage');
-} else {
-document.getElementById("loginMessage").innerText = "Invalid username or password.";
-}
-}
-function logout(){
-if(mqttClient){ try{ mqttClient.end(); }catch(e){} }
-document.getElementById("mainApp").style.display = "none";
-document.getElementById("loginPage").style.display = "flex";
-document.getElementById("username").value=""; document.getElementById("password").value="";
-}
-function showPage(pageId){
-document.querySelectorAll(".page").forEach(page => { page.classList.remove("active"); });
-document.getElementById(pageId).classList.add("active");
-}
-let mqttClient = null;
-function connectMQTT(){
-if(mqttClient){ try{ mqttClient.end(true); }catch(e){} }
-setMQTTStatus("Connecting...", false);
-const clientId = "AquaSenseWeb_" + Math.random().toString(16).substring(2,10);
-mqttClient = mqtt.connect(MQTT_BROKER, { clientId:clientId, clean:true, connectTimeout:10000, reconnectPeriod:5000, keepalive:60 });
-mqttClient.on("connect", function(){
-setMQTTStatus("MQTT Connected", true);
-// Subscribe to every master live feed and the old single-master feed.
-mqttClient.subscribe(["aquasense/+/live", LEGACY_LIVE_TOPIC], function(error){
-if(error) console.error("MQTT subscription failed:", error);
-});
-});
-mqttClient.on("message", function(topic,message){
-try{
-const data = JSON.parse(message.toString());
-const topicMasterId = getMasterIdFromTopic(topic);
-if(topicMasterId || topic === LEGACY_LIVE_TOPIC) updateDashboard(data, topicMasterId);
-} catch(error){ console.error("Invalid MQTT JSON:", error); }
-});
-mqttClient.on("reconnect", function(){ setMQTTStatus("Reconnecting...", false); });
-mqttClient.on("offline", function(){ setMQTTStatus("MQTT Offline", false); });
-mqttClient.on("error", function(error){ setMQTTStatus("MQTT Error", false); });
-mqttClient.on("close", function(){ setMQTTStatus("MQTT Disconnected", false); });
-}
-function getMasterIdFromTopic(topic){
-const match = String(topic).match(/^aquasense\/([^/]+)\/live$/);
-return match ? match[1] : null;
-}
-function setMQTTStatus(text, connected){
-document.getElementById("mqttStatus").innerText = text;
-const dot = document.getElementById("mqttDot");
-if(connected) dot.classList.add("connected"); else dot.classList.remove("connected");
-}
-function sendCommand(command, masterId){
-if(!mqttClient || !mqttClient.connected){ alert("MQTT is not connected."); return; }
-const targetMaster = masterId || selectedMasterId;
-if(!targetMaster){ alert("Select a master node first."); return; }
-const topic = "aquasense/" + encodeURIComponent(targetMaster) + "/cmd";
-mqttClient.publish(topic, JSON.stringify(command), {qos:0, retain:false});
-console.log("COMMAND:", topic, command);
-}
-function pumpCommand(state, masterId){ sendCommand({ pump:state, masterId:masterId || selectedMasterId }, masterId); }
-function valveCommand(node, action, masterId){ sendCommand({ node:String(node), action:action, masterId:masterId || selectedMasterId }, masterId); }
-function selectMaster(masterId){
-selectedMasterId = masterId;
-const record = masters.get(masterId);
-if(record) updateSummaryCards(record.data);
-renderMasters();
-}
+            <div class="tank-stage">
+              <div class="tank-svg-wrap" aria-label="Animated water tank level visualization">
+                <svg class="tank-svg" viewBox="0 0 160 220" role="img" aria-labelledby="tankSvgTitle">
+                  <title id="tankSvgTitle">Water tank fill level</title>
+                  <defs>
+                    <!-- Inner tank background gradient -->
+                    <linearGradient id="tankBgGrad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#cbd5e1" stop-opacity="0.35" />
+                      <stop offset="35%" stop-color="#f8fafc" stop-opacity="0.18" />
+                      <stop offset="100%" stop-color="#94a3b8" stop-opacity="0.3" />
+                    </linearGradient>
+                  </defs>
 
-function updateDashboard(data, topicMasterId){
-const masterId = String(topicMasterId || data.masterId || data.master_id || data.master || data.id || "KE001");
-const previous = masters.get(masterId) || { data:{}, lastSeen:0 };
-const merged = Object.assign({}, previous.data, data);
-merged.masterId = masterId;
-masters.set(masterId, { data:merged, lastSeen:Date.now() });
-if(!selectedMasterId) selectedMasterId = masterId;
-updateSummaryCards(masters.get(selectedMasterId)?.data || merged);
-renderMasters();
-renderAllCustomerNodes();
-}
-function updateSummaryCards(data){
-if(!data) return;
-const distance = Number(data.waterDistance ?? data.distance ?? 0);
-document.getElementById("waterDistance").innerText = distance.toFixed(1);
-const levelCm = Number(data.waterLevelCm ?? data.waterLevelHeight ?? data.tank_level_height ?? 0);
-document.getElementById("waterLevelCm").innerText = levelCm.toFixed(1);
-let levelPercent = Number(data.waterLevelPercent ?? data.tank_level_percent ?? 0);
-levelPercent = Math.max(0, Math.min(100, levelPercent));
-document.getElementById("waterLevelPercent").innerText = levelPercent.toFixed(1) + " %";
-document.getElementById("tankVisualPercent").innerText = levelPercent.toFixed(1) + "%";
-document.getElementById("waterVisual").style.height = levelPercent + "%";
-const tankHeight = data.tankHeight ?? data.tankHeightCm ?? data.tank_height;
-if(tankHeight !== undefined) document.getElementById("tankHeight").innerText = Number(tankHeight).toFixed(0) + " cm";
-let pumpState = data.pumpState ?? data.pump_relay ?? data.pump ?? "OFF";
-pumpState = String(pumpState).toUpperCase();
-const pumpElement = document.getElementById("pumpStatus");
-if(pumpState === "ON" || pumpState === "1" || pumpState === "TRUE"){
-pumpElement.innerText = "ON"; pumpElement.className = "pump-status pump-on";
-} else {
-pumpElement.innerText = "OFF"; pumpElement.className = "pump-status pump-off";
-}
-const masterFlow = Number(data.masterFlow ?? data.flow_rate ?? data.flowRate ?? 0);
-document.getElementById("masterFlow").innerText = masterFlow.toFixed(2) + " L/min";
-const masterTotal = Number(data.masterTotal ?? data.volume_total ?? data.total ?? 0);
-document.getElementById("masterTotal").innerText = masterTotal.toFixed(2);
-}
-function renderMasters(){
-const container = document.getElementById("mastersContainer");
-container.innerHTML = "";
-document.getElementById("masterCount").innerText = masters.size;
-if(masters.size === 0){
-container.innerHTML = '<div class="card"><h3>No Master Nodes</h3><p class="small">Waiting for master telemetry...</p></div>';
-return;
-}
-masters.forEach((record, masterId) => {
-const data = record.data || {};
-const isSelected = masterId === selectedMasterId;
-const ageSeconds = Math.max(0, Math.floor((Date.now() - record.lastSeen) / 1000));
-const online = ageSeconds <= 90;
-const flow = Number(data.masterFlow ?? data.flow_rate ?? data.flowRate ?? 0);
-const total = Number(data.masterTotal ?? data.volume_total ?? data.total ?? 0);
-const level = Number(data.waterLevelPercent ?? data.tank_level_percent ?? 0);
-const pump = String(data.pumpState ?? data.pump_relay ?? data.pump ?? "OFF").toUpperCase();
-const card = document.createElement("div");
-card.className = "node-card";
-card.style.borderTopColor = isSelected ? "#1976d2" : "#00695c";
-card.innerHTML = `
-<div class="node-title"><h2>Master ${escapeHTML(masterId)}</h2><span class="status ${online ? "online" : "offline"}">${online ? "ONLINE" : "OFFLINE"}</span></div>
-<div class="node-data">
-<div class="data-box"><div class="data-label">Master Flow</div><div class="data-value">${flow.toFixed(2)} L/min</div></div>
-<div class="data-box"><div class="data-label">Total Water</div><div class="data-value">${total.toFixed(2)} L</div></div>
-<div class="data-box"><div class="data-label">Tank Level</div><div class="data-value">${level.toFixed(1)} %</div></div>
-<div class="data-box"><div class="data-label">Pump</div><div class="data-value">${escapeHTML(pump)}</div></div>
-</div>
-<button class="btn-blue" onclick="selectMaster('${escapeJS(masterId)}')">${isSelected ? "SELECTED MASTER" : "Select Master"}</button>
-<button class="btn-green" onclick="pumpCommand('on','${escapeJS(masterId)}')">Pump ON</button>
-<button class="btn-red" onclick="pumpCommand('off','${escapeJS(masterId)}')">Pump OFF</button>`;
-container.appendChild(card);
-});
-}
-function renderAllCustomerNodes(){
-const allNodes = [];
-masters.forEach((record, masterId) => {
-const nodes = Array.isArray(record.data.nodes) ? record.data.nodes : [];
-nodes.forEach(node => allNodes.push(Object.assign({}, node, {
-id: node.id ?? node.nodeId ?? "--",
-masterId: masterId
-})));
-});
-document.getElementById("nodeCount").innerText = allNodes.length;
-renderNodes(allNodes);
-}
-function renderNodes(nodes){
-const container = document.getElementById("nodesContainer");
-container.innerHTML = "";
-if(nodes.length === 0){
-container.innerHTML = `<div class="card"><h3>No Customer Nodes</h3><p class="small">Waiting for customer node telemetry...</p></div>`;
-return;
-}
-nodes.forEach(node => {
-const id = node.id || "--";
-const masterId = node.masterId || selectedMasterId || "KE001";
-const flow = Number(node.flow ?? node.flow_rate ?? 0);
-const total = Number(node.total ?? node.volume_total ?? 0);
-const m1 = Number(node.m1 ?? node.moisture1 ?? node.soil_moisture_1 ?? 0);
-const m2 = Number(node.m2 ?? node.moisture2 ?? node.soil_moisture_2 ?? 0);
-const temp = Number(node.temp ?? node.temperature ?? 0);
-const hum = Number(node.hum ?? node.humidity ?? 0);
-const rssi = Number(node.rssi ?? 0);
-const online = node.online === true || node.online === 1 || String(node.online).toLowerCase() === "true";
-const valve1 = normalizeValve(node.valve1);
-const valve2 = normalizeValve(node.valve2);
-const card = document.createElement("div");
-card.className = "node-card";
-card.innerHTML = `
-<div class="node-title"><h2>Node ${escapeHTML(id)} <span class="small">(${escapeHTML(masterId)})</span></h2><span class="status ${online ? "online" : "offline"}">${online ? "ONLINE" : "OFFLINE"}</span></div>
-<div class="node-data">
-<div class="data-box"><div class="data-label">Flow Rate</div><div class="data-value">${flow.toFixed(2)} L/min</div></div>
-<div class="data-box"><div class="data-label">Total Water</div><div class="data-value">${total.toFixed(2)} L</div></div>
-<div class="data-box"><div class="data-label">Soil M1</div><div class="data-value">${m1.toFixed(0)} %</div></div>
-<div class="data-box"><div class="data-label">Soil M2</div><div class="data-value">${m2.toFixed(0)} %</div></div>
-<div class="data-box"><div class="data-label">Temp</div><div class="data-value">${temp.toFixed(1)} °C</div></div>
-<div class="data-box"><div class="data-label">Humidity</div><div class="data-value">${hum.toFixed(1)} %</div></div>
-<div class="data-box"><div class="data-label">Signal</div><div class="data-value">${rssi} dBm</div></div>
-<div class="data-box"><div class="data-label">Node ID</div><div class="data-value">${escapeHTML(id)}</div></div>
-</div>
-<div class="valve-section">
-<h3>⚙ Valve Control</h3>
-<div class="valve-row"><div><strong>Valve 1</strong><br><span class="valve-state ${valve1 === "OPEN" ? "valve-open" : "valve-closed"}">${valve1}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open1','${escapeJS(masterId)}')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close1','${escapeJS(masterId)}')">CLOSE</button></div></div>
-<div class="valve-row"><div><strong>Valve 2</strong><br><span class="valve-state ${valve2 === "OPEN" ? "valve-open" : "valve-closed"}">${valve2}</span></div><div class="valve-buttons"><button class="btn-green" onclick="valveCommand('${escapeJS(id)}','open2','${escapeJS(masterId)}')">OPEN</button><button class="btn-red" onclick="valveCommand('${escapeJS(id)}','close2','${escapeJS(masterId)}')">CLOSE</button></div></div>
-<div style="display:flex; gap:6px; margin-top:6px;"><button class="btn-blue" style="flex:1" onclick="valveCommand('${escapeJS(id)}','open','${escapeJS(masterId)}')">OPEN BOTH</button><button class="btn-gray" style="flex:1" onclick="valveCommand('${escapeJS(id)}','close','${escapeJS(masterId)}')">CLOSE BOTH</button></div>
-</div>`;
-container.appendChild(card);
-});
-}
-function normalizeValve(value){
-if(value === true || value === 1 || String(value).toUpperCase() === "OPEN"){ return "OPEN"; }
-return "CLOSED";
-}
-function escapeHTML(value){
-return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
-}
-function escapeJS(value){
-return String(value).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-}
-window.addEventListener("load", function(){ console.log("AQUASENSE dashboard loaded."); });
-</script>
+                  <!-- Ultrasonic sensor cap & nozzle -->
+                  <rect x="64" y="8" width="32" height="12" rx="4" fill="var(--muted)" stroke="var(--tank-stroke)" stroke-width="1.5" />
+                  <path d="M36 34 C36 22, 124 22, 124 34" fill="var(--tank-shell)" stroke="var(--tank-stroke)" stroke-width="2" />
+
+                  <!-- Tank Inner Vessel Background -->
+                  <rect x="24" y="34" width="112" height="164" rx="14" fill="var(--tank-inner)" />
+                  <rect x="24" y="34" width="112" height="164" rx="14" fill="url(#tankBgGrad)" />
+
+                  <!-- Ultrasonic sensor measurement beam (static; only water is animated) -->
+                  <line id="tankSensorBeam" x1="80" y1="26" x2="80" y2="196" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.4" />
+                </svg>
+
+                <!-- Animated Blue Water Cavity (smooth dual-wave CSS animation inside vessel) -->
+                <div class="tank-water-cavity" aria-hidden="true">
+                  <div id="tankWaterLevel" class="water-level" style="height: 0%; bottom: -22px;">
+                    <div class="wave-layer wave-back">
+                      <svg viewBox="0 0 480 30" preserveAspectRatio="none">
+                        <path d="M0,15 Q60,0 120,15 T240,15 T360,15 T480,15 L480,30 L0,30 Z" fill="#38bdf8" />
+                      </svg>
+                    </div>
+                    <div class="wave-layer wave-front">
+                      <svg viewBox="0 0 480 30" preserveAspectRatio="none">
+                        <path d="M0,15 Q60,30 120,15 T240,15 T360,15 T480,15 L480,30 L0,30 Z" fill="#0284c7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Foreground Vessel Border, Glass Highlight, Scale Ticks & Base Stand -->
+                <svg class="tank-svg tank-svg-overlay" viewBox="0 0 160 220" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="glassReflect" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.34" />
+                      <stop offset="30%" stop-color="#ffffff" stop-opacity="0.06" />
+                      <stop offset="85%" stop-color="#ffffff" stop-opacity="0" />
+                      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.16" />
+                    </linearGradient>
+                  </defs>
+
+                  <!-- Specular Glass Overlay -->
+                  <rect x="28" y="38" width="24" height="156" rx="10" fill="url(#glassReflect)" />
+
+                  <!-- Tank Outer Vessel Border -->
+                  <rect x="24" y="34" width="112" height="164" rx="14" fill="none" stroke="var(--tank-stroke)" stroke-width="2.2" />
+
+                  <!-- Top-Left Inlet Pipe & Visual Inflow Arrow -->
+                  <g id="tankInletPort" class="tank-port">
+                    <rect x="15" y="48" width="9" height="6" rx="1.5" fill="currentColor" opacity="0.25" stroke="currentColor" stroke-width="1.3" />
+                    <text x="11" y="43" text-anchor="middle" fill="currentColor" font-size="7" font-weight="700" font-family="var(--font-mono)">IN</text>
+                    <g class="port-arrow">
+                      <path d="M2 51 H13 M9.5 47.5 L13 51 L9.5 54.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                    </g>
+                  </g>
+
+                  <!-- Bottom-Left Outlet Pipe & Visual Outflow Arrow -->
+                  <g id="tankOutletPort" class="tank-port">
+                    <rect x="15" y="176" width="9" height="6" rx="1.5" fill="currentColor" opacity="0.25" stroke="currentColor" stroke-width="1.3" />
+                    <text x="11" y="171" text-anchor="middle" fill="currentColor" font-size="7" font-weight="700" font-family="var(--font-mono)">OUT</text>
+                    <g class="port-arrow">
+                      <path d="M13 179 H2 M5.5 175.5 L2 179 L5.5 182.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                    </g>
+                  </g>
+
+                  <!-- Graduated Scale Ticks (100%, 75%, 50%, 25%, 0%) -->
+                  <g stroke="var(--tank-stroke)" stroke-width="1.2" opacity="0.75">
+                    <line x1="138" y1="38" x2="144" y2="38" />
+                    <line x1="138" y1="78" x2="143" y2="78" />
+                    <line x1="138" y1="118" x2="145" y2="118" />
+                    <line x1="138" y1="158" x2="143" y2="158" />
+                    <line x1="138" y1="194" x2="144" y2="194" />
+                  </g>
+                  <g fill="var(--muted-foreground)" font-size="8.5" font-family="var(--font-mono)">
+                    <text x="147" y="41">100</text>
+                    <text x="147" y="121">50</text>
+                    <text x="147" y="197">0</text>
+                  </g>
+
+                  <!-- Tank Base Stand -->
+                  <rect x="18" y="199" width="124" height="7" rx="3.5" fill="var(--tank-shell)" stroke="var(--tank-stroke)" stroke-width="1.5" />
+                </svg>
+              </div>
+
+              <div class="tank-stats">
+                <div>
+                  <div id="tankVisualPercent" class="tank-percent-readout">-- %</div>
+                  <div class="metric-sub" style="margin-top:2px;">Water storage fill</div>
+                </div>
+                <div class="tank-kv-list">
+                  <div class="tank-kv">
+                    <span class="tank-kv-label">Water Height</span>
+                    <span class="tank-kv-val"><span id="waterLevelCm">--</span> cm</span>
+                  </div>
+                  <div class="tank-kv">
+                    <span class="tank-kv-label">Sensor Dist</span>
+                    <span class="tank-kv-val"><span id="waterDistance">--</span> cm</span>
+                  </div>
+                  <div class="tank-kv">
+                    <span class="tank-kv-label">Tank Capacity</span>
+                    <span class="tank-kv-val"><span id="tankHeight">--</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Visual Inflow / Outflow Summary Strip -->
+            <div class="tank-flow-strip">
+              <div class="flow-pill-group">
+                <span id="tankStripIn" class="flow-pill" title="Water entering tank">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3v13"></path>
+                    <path d="m7 11 5 5 5-5"></path>
+                    <path d="M5 20h14"></path>
+                  </svg>
+                  <span>In: <strong id="tankInFlowVal">--</strong></span>
+                </span>
+                <span id="tankStripOut" class="flow-pill" title="Water leaving tank to customer nodes">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 16V3"></path>
+                    <path d="m7 8 5-5 5 5"></path>
+                    <path d="M5 20h14"></path>
+                  </svg>
+                  <span>Out: <strong id="tankOutFlowVal">--</strong></span>
+                </span>
+              </div>
+              <span id="tankStripNetBadge" class="badge badge-neutral">Idle</span>
+            </div>
+          </div>
+
+          <!-- 4 Summary KPI / Control Cards -->
+          <div class="kpi-stack">
+            <!-- Card 1: Master Flow Rate (Water Into Tank) -->
+            <div class="card card-pad">
+              <div class="card-header">
+                <span class="card-title">Master Flow Rate</span>
+                <span id="inflowBadge" class="badge badge-neutral flow-badge-icon">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3v13"></path>
+                    <path d="m7 11 5 5 5-5"></path>
+                    <path d="M5 20h14"></path>
+                  </svg>
+                  <span id="inflowBadgeText">Inflow · Idle</span>
+                </span>
+              </div>
+              <div id="masterFlow" class="metric-value">-- L/min</div>
+              <div class="metric-sub">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);" aria-hidden="true">
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                </svg>
+                <span>Into tank</span>
+                <span aria-hidden="true">&middot;</span>
+                <span>Vol: <strong id="masterTotal" class="tabular">--</strong> L</span>
+              </div>
+            </div>
+
+            <!-- Card 2: Sum of Customer Node Flow Rates (Water Out of Tank) -->
+            <div class="card card-pad">
+              <div class="card-header">
+                <span class="card-title">Nodes Outflow Rate</span>
+                <span id="outflowBadge" class="badge badge-neutral flow-badge-icon">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 16V3"></path>
+                    <path d="m7 8 5-5 5 5"></path>
+                    <path d="M5 20h14"></path>
+                  </svg>
+                  <span id="outflowBadgeText">Outflow · Idle</span>
+                </span>
+              </div>
+              <div id="nodesTotalFlow" class="metric-value">-- L/min</div>
+              <div class="metric-sub">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--warning);" aria-hidden="true">
+                  <path d="M17 11l4-4-4-4"></path>
+                  <path d="M21 7H9a4 4 0 0 0 0 8h1"></path>
+                  <path d="M3 17h12"></path>
+                </svg>
+                <span>Out of tank</span>
+                <span aria-hidden="true">&middot;</span>
+                <span>Net: <strong id="netTankFlow" class="tabular">--</strong> L/min</span>
+              </div>
+            </div>
+
+            <!-- Card 3: Main Pump Control with Tactile Accessible Switch -->
+            <div class="card card-pad">
+              <div class="card-header">
+                <span class="card-title">Main Pump Control</span>
+                <span id="pumpStatusBadge" class="badge badge-danger">OFF</span>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:4px;">
+                <div>
+                  <div id="pumpHeadline" class="metric-value" style="font-size:22px;">Standby</div>
+                  <div id="pumpFeedbackText" class="metric-sub" style="margin-top:4px;">Manual switch control</div>
+                </div>
+                <div class="switch-wrap">
+                  <span id="pumpSwitchStateText" class="switch-state-text">OFF</span>
+                  <button
+                    type="button"
+                    id="pumpSwitch"
+                    class="switch"
+                    role="switch"
+                    aria-checked="false"
+                    aria-label="Toggle main irrigation pump"
+                  >
+                    <span class="switch-thumb" aria-hidden="true"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 4: Master Health & Customer Node Summary -->
+            <div class="card card-pad">
+              <div class="card-header">
+                <span class="card-title">Customer Nodes</span>
+                <span id="activeNodesOnlineBadge" class="badge badge-neutral tabular">0 online</span>
+              </div>
+              <div id="nodeCount" class="metric-value">0</div>
+              <div class="metric-sub">
+                <span>Configured height: <strong id="tankHeightCard" class="tabular">--</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customer Nodes Toolbar & Grid -->
+        <div class="section-toolbar">
+          <div class="section-title-group">
+            <h2 class="section-title">Zone &amp; Customer Nodes</h2>
+            <span id="nodesScopeNote" class="section-subtitle">Showing nodes for active master</span>
+          </div>
+
+          <div class="toolbar-controls">
+            <div class="search-box">
+              <svg class="search-box-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+              </svg>
+              <input id="nodeSearchInput" class="input" type="search" placeholder="Search node ID..." aria-label="Search customer nodes by ID" />
+            </div>
+
+            <div class="segmented" role="group" aria-label="Filter customer nodes by status">
+              <button type="button" class="segmented-btn is-active" data-node-filter="all">All</button>
+              <button type="button" class="segmented-btn" data-node-filter="online">Online</button>
+              <button type="button" class="segmented-btn" data-node-filter="offline">Offline</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="nodesContainer" class="nodes-grid"></div>
+      </section>
+
+      <!-- ABOUT VIEW -->
+      <section id="aboutPage" class="page">
+        <div class="card hero-panel">
+          <h1>About AquaSense</h1>
+          <p>
+            A smart water distribution platform designed to improve irrigation reliability using
+            ultrasonic tank sensing, flow metering, long-range LoRa nodes, and MQTT telemetry.
+          </p>
+        </div>
+        <div class="info-grid">
+          <div class="card info-card">
+            <h2>Water Monitoring</h2>
+            <p>Monitor flow rate, cumulative volume, soil moisture, temperature, humidity, and tank levels in real time.</p>
+          </div>
+          <div class="card info-card">
+            <h2>LoRa Multi-Master</h2>
+            <p>Each master controller coordinates its local LoRa customer nodes and reports independently over MQTT.</p>
+          </div>
+          <div class="card info-card">
+            <h2>Manual Control</h2>
+            <p>Valves and the main pump are switched manually from this dashboard. Nothing is switched automatically, except safety cut-offs in the firmware (maximum valve open time, maximum pump run time).</p>
+          </div>
+          <div class="card info-card">
+            <h2>Security Hardening</h2>
+            <p>Strict Content Security Policy, validated master and node identifiers, safe DOM rendering, and stale-retained telemetry detection.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>AquaSense Solar Powered Irrigation System</span>
+      <span>LoRa &middot; MQTT Telemetry &middot; Multi-Master Control</span>
+    </footer>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- SHADCN ACCESSIBLE CONFIRMATION DIALOG (REPLACES window.confirm)           -->
+  <!-- ========================================================================= -->
+  <div id="confirmDialogBackdrop" class="dialog-backdrop" role="alertdialog" aria-modal="true" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogDesc">
+    <div class="dialog-panel">
+      <h2 id="confirmDialogTitle" class="dialog-title">Confirm Action</h2>
+      <p id="confirmDialogDesc" class="dialog-desc"></p>
+      <div class="dialog-actions">
+        <button type="button" id="confirmDialogCancel" class="btn btn-outline">Cancel</button>
+        <button type="button" id="confirmDialogConfirm" class="btn btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 1:1 MASTER NODE <-> TOPIC MAPPING MANAGER DIALOG                          -->
+  <!-- ========================================================================= -->
+  <div id="topicsDialogBackdrop" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="topicsDialogTitle">
+    <div class="topic-dialog-panel">
+      <div class="card-header" style="margin-bottom:10px;">
+        <div>
+          <h2 id="topicsDialogTitle" class="dialog-title" style="margin-bottom:2px;">Master Node Topic Mappings (1:1)</h2>
+          <p class="dialog-desc" style="margin-bottom:0;">
+            Each master node reads telemetry strictly from its own assigned MQTT topic.
+          </p>
+        </div>
+        <button type="button" id="topicsDialogCloseBtn" class="btn btn-ghost btn-sm" aria-label="Close topic mappings dialog">Close</button>
+      </div>
+
+      <form id="mappingForm" class="mapping-form" novalidate>
+        <div>
+          <label class="field-label" for="mapMasterIdInput">Master ID</label>
+          <input id="mapMasterIdInput" class="input" type="text" placeholder="e.g. KE001" maxlength="32" required />
+        </div>
+        <div>
+          <label class="field-label" for="mapLiveTopicInput">Live Telemetry Topic (1:1)</label>
+          <input id="mapLiveTopicInput" class="input" type="text" placeholder="e.g. aquasense/KE001/live" maxlength="128" required />
+        </div>
+        <div>
+          <label class="field-label" for="mapCmdTopicInput">Command Topic (optional)</label>
+          <input id="mapCmdTopicInput" class="input" type="text" placeholder="Auto from live (/cmd)" maxlength="128" />
+        </div>
+        <div>
+          <label class="field-label" for="mapStatusTopicInput">Status / LWT Topic (optional)</label>
+          <input id="mapStatusTopicInput" class="input" type="text" placeholder="Auto from live (/status)" maxlength="128" />
+        </div>
+        <div id="mapFormError" class="mapping-error" role="alert"></div>
+        <div class="mapping-form-actions">
+          <button type="button" id="mapResetDefaultsBtn" class="btn btn-ghost btn-sm">Reset Defaults</button>
+          <div style="display:flex; gap:8px;">
+            <button type="button" id="mapCancelEditBtn" class="btn btn-outline btn-sm" style="display:none;">Cancel Edit</button>
+            <button type="submit" id="mapSubmitBtn" class="btn btn-primary btn-sm">Save 1:1 Mapping</button>
+          </div>
+        </div>
+      </form>
+
+      <div id="mappingList" class="mapping-list" aria-label="Configured 1:1 master topic mappings"></div>
+    </div>
+  </div>
+
+  <!-- Non-blocking Toast Notifications (replaces window.alert) -->
+  <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      /* ======================================================================= */
+      /* MERGED MULTI-MASTER MQTT TELEMETRY, 1:1 TOPIC MAPPING & SECURITY LOGIC  */
+      /* ======================================================================= */
+      const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
+      const TOPIC_STORAGE_KEY = "aquasense_master_topics_v1";
+
+      // 1:1 Master ID -> Topic mapping (1 master = 1 dedicated live telemetry topic).
+      // Values can be a live topic string (cmd/status derived automatically) or
+      // { live: "...", cmd: "...", status: "..." } for explicit topic overrides.
+      const DEFAULT_MASTER_TOPICS = {
+        "moses_kaaga_9x7p2": "aquasense/moses_kaaga_9x7p2/live"
+        // Add additional 1:1 master mappings here, e.g.:
+        // "KE001": "aquasense/KE001/live",
+        // "KE002": { live: "farm_north/master2/live", cmd: "farm_north/master2/cmd", status: "farm_north/master2/status" }
+      };
+
+      // Strict identifier & topic validation (no MQTT wildcards '+' or '#' in 1:1 topics)
+      const NODE_ID_RE = /^[A-Za-z0-9_-]{1,8}$/;
+      const MASTER_ID_RE = /^[A-Za-z0-9_-]{1,32}$/;
+      const TOPIC_1TO1_RE = /^[A-Za-z0-9_.\-/]{1,128}$/;
+      const PENDING_TTL_MS = 6000;
+      const MASTER_STALE_SEC = 10;
+
+      // Bidirectional 1:1 mapping tables & active subscription set
+      const masterTopicConfigs = new Map(); // masterId -> { masterId, liveTopic, cmdTopic, statusTopic }
+      const liveTopicToMaster = new Map();  // liveTopic -> masterId
+      const statusTopicToMaster = new Map(); // statusTopic -> masterId
+      const subscribedTopics = new Set();
+
+      // Multi-master state map: masterId -> { data, lastDataAt, dataTs, masterOffline }
+      const masters = new Map();
+      // Pending optimistic switch feedback: key -> { targetState, expiresAt }
+      const pendingCommands = new Map();
+
+      let selectedMasterId = null;
+      let mqttClient = null;
+      let mqttConnected = false;
+      let activePageId = "dashboardPage";
+      let nodeSearchQuery = "";
+      let nodeStatusFilter = "all";
+      let comboboxOpen = false;
+      let comboboxHighlightIndex = -1;
+      let editingMasterId = null;
+      let pendingConfirmCallback = null;
+
+      /* ======================================================================= */
+      /* SAFE DOM & VALUE HELPERS (NO UNSAFE innerHTML)                          */
+      /* ======================================================================= */
+      function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined && text !== null) node.textContent = String(text);
+        return node;
+      }
+
+      function clearChildren(node) {
+        if (node) node.textContent = "";
+      }
+
+      // Preserve null/NaN sensor failure -> "--" instead of fake 0
+      function fmt(value, digits) {
+        if (value === null || value === undefined || value === "") return "--";
+        const n = Number(value);
+        return Number.isFinite(n) ? n.toFixed(digits) : "--";
+      }
+
+      // Support firmware field aliases from index12233.txt while preserving explicit null
+      function pickField(obj, keys) {
+        if (!obj || typeof obj !== "object") return undefined;
+        for (let i = 0; i < keys.length; i++) {
+          const k = keys[i];
+          if (Object.prototype.hasOwnProperty.call(obj, k) && obj[k] !== undefined) {
+            return obj[k];
+          }
+        }
+        return undefined;
+      }
+
+      // Strict valve normalizer from hardened index.html: never silently maps unknown -> CLOSED
+      function normalizeValve(value) {
+        const v = String(value).toUpperCase();
+        if (value === true || value === 1 || v === "OPEN") return "OPEN";
+        if (value === false || value === 0 || v === "CLOSED") return "CLOSED";
+        if (v === "PENDING") return "PENDING";
+        return "UNKNOWN";
+      }
+
+      function normalizePump(value) {
+        const v = String(value || "OFF").toUpperCase();
+        if (v === "ON" || v === "1" || v === "TRUE") return "ON";
+        return "OFF";
+      }
+
+      function formatClockTime(ms) {
+        if (!ms) return "Never";
+        try {
+          return new Date(ms).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+          });
+        } catch (e) {
+          return "Just now";
+        }
+      }
+
+      function getMasterHealth(record) {
+        if (!record) {
+          return { state: "unknown", label: "Master: no data yet", shortLabel: "No data", dotClass: "is-warn", badgeClass: "badge-neutral" };
+        }
+        if (record.masterOffline) {
+          return { state: "offline", label: "Master: OFFLINE", shortLabel: "Offline", dotClass: "", badgeClass: "badge-danger" };
+        }
+        if (!record.lastDataAt) {
+          return { state: "unknown", label: "Master: no data yet", shortLabel: "Waiting", dotClass: "is-warn", badgeClass: "badge-neutral" };
+        }
+        let age = Math.max(0, Math.round((Date.now() - record.lastDataAt) / 1000));
+        // /live can be retained on the broker; check master epoch clock (ts) to spot stale replays
+        if (record.dataTs > 0) {
+          age = Math.max(age, Math.round(Date.now() / 1000 - record.dataTs));
+        }
+        if (age <= MASTER_STALE_SEC) {
+          return { state: "live", label: "Master: live", shortLabel: "Live", dotClass: "is-live", badgeClass: "badge-success" };
+        }
+        return {
+          state: "stale",
+          label: "Master: no data for " + age + " s",
+          shortLabel: "Stale (" + age + "s)",
+          dotClass: "is-warn",
+          badgeClass: "badge-warning"
+        };
+      }
+
+      /* ======================================================================= */
+      /* TOASTS & ACCESSIBLE CONFIRMATION DIALOG                                 */
+      /* ======================================================================= */
+      function showToast(message, variant) {
+        const region = document.getElementById("toastRegion");
+        if (!region) return;
+        const toast = el("div", "toast" + (variant ? " toast-" + variant : ""));
+        const msg = el("span", null, message);
+        const closeBtn = el("button", "btn btn-ghost btn-sm", "Dismiss");
+        closeBtn.type = "button";
+        closeBtn.style.minHeight = "24px";
+        closeBtn.style.padding = "2px 6px";
+        closeBtn.addEventListener("click", function () {
+          toast.remove();
+        });
+        toast.appendChild(msg);
+        toast.appendChild(closeBtn);
+        region.appendChild(toast);
+        window.setTimeout(function () {
+          if (toast.parentNode) toast.remove();
+        }, 4500);
+      }
+
+      function openConfirmDialog(title, description, confirmLabel, confirmVariant, onConfirm) {
+        const backdrop = document.getElementById("confirmDialogBackdrop");
+        const titleEl = document.getElementById("confirmDialogTitle");
+        const descEl = document.getElementById("confirmDialogDesc");
+        const confirmBtn = document.getElementById("confirmDialogConfirm");
+        const cancelBtn = document.getElementById("confirmDialogCancel");
+
+        titleEl.textContent = title;
+        descEl.textContent = description;
+        confirmBtn.textContent = confirmLabel || "Confirm";
+        confirmBtn.className = "btn " + (confirmVariant === "danger" ? "btn-destructive" : "btn-primary");
+        pendingConfirmCallback = onConfirm;
+
+        backdrop.classList.add("open");
+        cancelBtn.focus();
+      }
+
+      function closeConfirmDialog() {
+        const backdrop = document.getElementById("confirmDialogBackdrop");
+        backdrop.classList.remove("open");
+        pendingConfirmCallback = null;
+      }
+
+      /* ======================================================================= */
+      /* AUTHENTICATION & PAGE NAVIGATION                                        */
+      /* ======================================================================= */
+      function handleLoginSubmit(ev) {
+        if (ev) ev.preventDefault();
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+        const errBox = document.getElementById("loginMessage");
+
+        if (username === "aquasense" && password === "irrigation2026") {
+          errBox.style.display = "none";
+          errBox.textContent = "";
+          document.getElementById("loginPage").style.display = "none";
+          document.getElementById("mainApp").style.display = "block";
+          connectMQTT();
+          showPage("dashboardPage");
+        } else {
+          errBox.textContent = "Invalid username or password.";
+          errBox.style.display = "block";
+        }
+      }
+
+      function logout() {
+        if (mqttClient) {
+          try { mqttClient.end(true); } catch (e) {}
+          mqttClient = null;
+        }
+        mqttConnected = false;
+        subscribedTopics.clear();
+        masters.clear();
+        pendingCommands.clear();
+        selectedMasterId = null;
+        initMasterTopicMappings();
+        closeCombobox();
+        closeConfirmDialog();
+        closeTopicsDialog();
+
+        document.getElementById("mainApp").style.display = "none";
+        document.getElementById("loginPage").style.display = "flex";
+        document.getElementById("username").value = "";
+        document.getElementById("password").value = "";
+        document.getElementById("loginMessage").style.display = "none";
+
+        setMQTTStatus("MQTT Disconnected", "danger");
+        renderActiveMasterView();
+        renderComboboxOptions();
+      }
+
+      function showPage(pageId) {
+        activePageId = pageId;
+        document.querySelectorAll(".page").forEach(function (page) {
+          page.classList.toggle("active", page.id === pageId);
+        });
+        document.querySelectorAll(".nav-link[data-page]").forEach(function (btn) {
+          btn.classList.toggle("is-active", btn.dataset.page === pageId);
+        });
+      }
+
+      /* ======================================================================= */
+      /* THEME TOGGLE (LIGHT / DARK)                                             */
+      /* ======================================================================= */
+      function applyTheme(theme) {
+        const isDark = theme === "dark";
+        document.documentElement.classList.toggle("dark", isDark);
+        const sun = document.getElementById("themeIconSun");
+        const moon = document.getElementById("themeIconMoon");
+        if (sun && moon) {
+          sun.style.display = isDark ? "block" : "none";
+          moon.style.display = isDark ? "none" : "block";
+        }
+        try { localStorage.setItem("aquasense_theme", isDark ? "dark" : "light"); } catch (e) {}
+      }
+
+      function initTheme() {
+        let saved = null;
+        try { saved = localStorage.getItem("aquasense_theme"); } catch (e) {}
+        if (!saved && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          saved = "dark";
+        }
+        applyTheme(saved === "dark" ? "dark" : "light");
+      }
+
+      /* ======================================================================= */
+      /* 1:1 MASTER NODE <-> MQTT TOPIC MAPPING ENGINE                           */
+      /* ======================================================================= */
+      function isValid1To1Topic(topic) {
+        if (typeof topic !== "string") return false;
+        const t = topic.trim();
+        if (!t || !TOPIC_1TO1_RE.test(t)) return false;
+        if (t.charAt(0) === "/" || t.charAt(t.length - 1) === "/") return false;
+        if (t.indexOf("//") !== -1 || t.indexOf("+") !== -1 || t.indexOf("#") !== -1) return false;
+        return true;
+      }
+
+      function resolveTopicConfig(masterId, spec) {
+        const liveRaw = typeof spec === "string" ? spec : (spec && spec.live);
+        const liveTopic = String(liveRaw || "").trim();
+        if (!MASTER_ID_RE.test(masterId) || !isValid1To1Topic(liveTopic)) return null;
+
+        const base = liveTopic.endsWith("/live") ? liveTopic.slice(0, -5) : liveTopic;
+        const cmdOverride = spec && typeof spec === "object" && spec.cmd ? String(spec.cmd).trim() : "";
+        const statusOverride = spec && typeof spec === "object" && spec.status ? String(spec.status).trim() : "";
+
+        const cmdTopic = cmdOverride && isValid1To1Topic(cmdOverride) ? cmdOverride : (base + "/cmd");
+        const statusTopic = statusOverride && isValid1To1Topic(statusOverride) ? statusOverride : (base + "/status");
+        return { masterId: masterId, liveTopic: liveTopic, cmdTopic: cmdTopic, statusTopic: statusTopic };
+      }
+
+      function rebuildTopicIndexes() {
+        liveTopicToMaster.clear();
+        statusTopicToMaster.clear();
+
+        masterTopicConfigs.forEach(function (cfg, masterId) {
+          liveTopicToMaster.set(cfg.liveTopic, masterId);
+          statusTopicToMaster.set(cfg.statusTopic, masterId);
+          if (!masters.has(masterId)) {
+            masters.set(masterId, { data: null, lastDataAt: 0, dataTs: 0, masterOffline: false });
+          }
+        });
+
+        // Remove stale master state for deleted mappings
+        Array.from(masters.keys()).forEach(function (masterId) {
+          if (!masterTopicConfigs.has(masterId)) {
+            masters.delete(masterId);
+          }
+        });
+
+        if (!selectedMasterId || !masterTopicConfigs.has(selectedMasterId)) {
+          const first = masterTopicConfigs.keys().next();
+          selectedMasterId = first.done ? null : first.value;
+        }
+      }
+
+      function saveTopicMappings() {
+        const out = {};
+        masterTopicConfigs.forEach(function (cfg, masterId) {
+          out[masterId] = { live: cfg.liveTopic, cmd: cfg.cmdTopic, status: cfg.statusTopic };
+        });
+        try { localStorage.setItem(TOPIC_STORAGE_KEY, JSON.stringify(out)); } catch (e) {}
+      }
+
+      function loadMappingSource(sourceObj) {
+        masterTopicConfigs.clear();
+        if (!sourceObj || typeof sourceObj !== "object") return;
+        const usedLive = new Set();
+        const usedStatus = new Set();
+
+        Object.keys(sourceObj).forEach(function (rawId) {
+          const masterId = String(rawId).trim();
+          const cfg = resolveTopicConfig(masterId, sourceObj[rawId]);
+          if (!cfg) return;
+          if (usedLive.has(cfg.liveTopic) || usedStatus.has(cfg.statusTopic)) return;
+          usedLive.add(cfg.liveTopic);
+          usedStatus.add(cfg.statusTopic);
+          masterTopicConfigs.set(masterId, cfg);
+        });
+      }
+
+      function initMasterTopicMappings() {
+        let loaded = null;
+        try {
+          const raw = localStorage.getItem(TOPIC_STORAGE_KEY);
+          if (raw) loaded = JSON.parse(raw);
+        } catch (e) { loaded = null; }
+
+        if (loaded && typeof loaded === "object" && Object.keys(loaded).length > 0) {
+          loadMappingSource(loaded);
+        }
+        if (masterTopicConfigs.size === 0) {
+          loadMappingSource(DEFAULT_MASTER_TOPICS);
+        }
+        rebuildTopicIndexes();
+      }
+
+      function syncMqttSubscriptions() {
+        if (!mqttClient || !mqttClient.connected) return;
+        const desired = new Set();
+        masterTopicConfigs.forEach(function (cfg) {
+          desired.add(cfg.liveTopic);
+          desired.add(cfg.statusTopic);
+        });
+
+        const toUnsubscribe = [];
+        subscribedTopics.forEach(function (topic) {
+          if (!desired.has(topic)) toUnsubscribe.push(topic);
+        });
+        const toSubscribe = [];
+        desired.forEach(function (topic) {
+          if (!subscribedTopics.has(topic)) toSubscribe.push(topic);
+        });
+
+        if (toUnsubscribe.length > 0) {
+          mqttClient.unsubscribe(toUnsubscribe, function (err) {
+            if (err) console.error("MQTT unsubscribe failed:", err);
+          });
+          toUnsubscribe.forEach(function (t) { subscribedTopics.delete(t); });
+        }
+        if (toSubscribe.length > 0) {
+          mqttClient.subscribe(toSubscribe, function (err) {
+            if (err) console.error("MQTT subscribe failed:", err);
+          });
+          toSubscribe.forEach(function (t) { subscribedTopics.add(t); });
+        }
+      }
+
+      function upsertMasterTopicMapping(masterId, liveTopic, cmdTopicOpt, statusTopicOpt, previousMasterId) {
+        const cleanId = String(masterId || "").trim();
+        if (!MASTER_ID_RE.test(cleanId)) {
+          return { ok: false, error: "Master ID must be 1–32 characters (letters, numbers, _ or -)." };
+        }
+        const cleanLive = String(liveTopic || "").trim();
+        if (!isValid1To1Topic(cleanLive)) {
+          return { ok: false, error: "Live topic must be a valid 1:1 MQTT path without '+' or '#' wildcards." };
+        }
+        const cleanCmd = String(cmdTopicOpt || "").trim();
+        if (cleanCmd && !isValid1To1Topic(cleanCmd)) {
+          return { ok: false, error: "Command topic must be a valid 1:1 MQTT path without wildcards." };
+        }
+        const cleanStatus = String(statusTopicOpt || "").trim();
+        if (cleanStatus && !isValid1To1Topic(cleanStatus)) {
+          return { ok: false, error: "Status topic must be a valid 1:1 MQTT path without wildcards." };
+        }
+
+        const cfg = resolveTopicConfig(cleanId, { live: cleanLive, cmd: cleanCmd, status: cleanStatus });
+        if (!cfg) return { ok: false, error: "Invalid mapping configuration." };
+
+        // Enforce strict 1:1 uniqueness across masters
+        const existingLiveOwner = liveTopicToMaster.get(cfg.liveTopic);
+        if (existingLiveOwner && existingLiveOwner !== cleanId && existingLiveOwner !== previousMasterId) {
+          return { ok: false, error: "Live topic '" + cfg.liveTopic + "' is already mapped to Master '" + existingLiveOwner + "' (1:1 required)." };
+        }
+        const existingStatusOwner = statusTopicToMaster.get(cfg.statusTopic);
+        if (existingStatusOwner && existingStatusOwner !== cleanId && existingStatusOwner !== previousMasterId) {
+          return { ok: false, error: "Status topic '" + cfg.statusTopic + "' is already mapped to Master '" + existingStatusOwner + "'." };
+        }
+        if (previousMasterId && previousMasterId !== cleanId && masterTopicConfigs.has(cleanId)) {
+          return { ok: false, error: "Master ID '" + cleanId + "' already exists." };
+        }
+
+        if (previousMasterId && previousMasterId !== cleanId) {
+          masterTopicConfigs.delete(previousMasterId);
+          masters.delete(previousMasterId);
+          if (selectedMasterId === previousMasterId) selectedMasterId = cleanId;
+        } else if (masterTopicConfigs.has(cleanId)) {
+          const prevCfg = masterTopicConfigs.get(cleanId);
+          if (prevCfg && prevCfg.liveTopic !== cfg.liveTopic) {
+            masters.set(cleanId, { data: null, lastDataAt: 0, dataTs: 0, masterOffline: false });
+          }
+        }
+
+        masterTopicConfigs.set(cleanId, cfg);
+        rebuildTopicIndexes();
+        saveTopicMappings();
+        syncMqttSubscriptions();
+        selectedMasterId = cleanId;
+        renderComboboxOptions();
+        renderActiveMasterView();
+        renderMappingList();
+        return { ok: true };
+      }
+
+      function removeMasterTopicMapping(masterId) {
+        if (!masterTopicConfigs.has(masterId)) return;
+        masterTopicConfigs.delete(masterId);
+        rebuildTopicIndexes();
+        saveTopicMappings();
+        syncMqttSubscriptions();
+        renderComboboxOptions();
+        renderActiveMasterView();
+        renderMappingList();
+      }
+
+      function resetDefaultTopicMappings() {
+        loadMappingSource(DEFAULT_MASTER_TOPICS);
+        masters.clear();
+        rebuildTopicIndexes();
+        saveTopicMappings();
+        syncMqttSubscriptions();
+        renderComboboxOptions();
+        renderActiveMasterView();
+        renderMappingList();
+      }
+
+      /* ======================================================================= */
+      /* MQTT CONNECTION & 1:1 TOPIC MESSAGE ROUTING                             */
+      /* ======================================================================= */
+      function setMQTTStatus(text, tone) {
+        const label = document.getElementById("mqttStatus");
+        const dot = document.getElementById("mqttDot");
+        const badge = document.getElementById("mqttBadge");
+        if (label) label.textContent = text;
+        if (dot) {
+          dot.classList.remove("is-live", "is-warn");
+          if (tone === "success") dot.classList.add("is-live");
+          else if (tone === "warning") dot.classList.add("is-warn");
+        }
+        if (badge) {
+          badge.className = "badge " + (
+            tone === "success" ? "badge-success" :
+            tone === "warning" ? "badge-warning" : "badge-danger"
+          );
+        }
+      }
+
+      function connectMQTT() {
+        if (typeof window.mqtt === "undefined") {
+          setMQTTStatus("MQTT library unavailable", "danger");
+          showToast("MQTT client library failed to load.", "danger");
+          return;
+        }
+        if (mqttClient) {
+          try { mqttClient.end(true); } catch (e) {}
+        }
+        subscribedTopics.clear();
+        setMQTTStatus("Connecting...", "warning");
+        const clientId = "AquaSenseWeb_" + Math.random().toString(16).substring(2, 10);
+
+        mqttClient = window.mqtt.connect(MQTT_BROKER, {
+          clientId: clientId,
+          clean: true,
+          connectTimeout: 10000,
+          reconnectPeriod: 5000,
+          keepalive: 60
+        });
+
+        mqttClient.on("connect", function () {
+          mqttConnected = true;
+          subscribedTopics.clear();
+          setMQTTStatus("MQTT Connected", "success");
+          syncMqttSubscriptions();
+          renderActiveMasterView();
+        });
+
+        mqttClient.on("message", function (topic, message) {
+          const payloadStr = message.toString();
+
+          // 1. Exact 1:1 status topic lookup
+          const statusMasterId = statusTopicToMaster.get(topic);
+          if (statusMasterId) {
+            const prev = masters.get(statusMasterId) || { data: null, lastDataAt: 0, dataTs: 0, masterOffline: false };
+            prev.masterOffline = (payloadStr.trim().toLowerCase() === "offline");
+            masters.set(statusMasterId, prev);
+            renderComboboxOptions();
+            if (statusMasterId === selectedMasterId) updateMasterConnectionDisplay();
+            return;
+          }
+
+          // 2. Exact 1:1 live telemetry topic lookup
+          const liveMasterId = liveTopicToMaster.get(topic);
+          if (!liveMasterId) return;
+
+          let parsed;
+          try {
+            // Older master firmware can emit bare NaN for a failed sensor
+            parsed = JSON.parse(payloadStr.replace(/\bNaN\b/g, "null"));
+          } catch (err) {
+            console.error("Invalid MQTT JSON on topic " + topic + ":", err);
+            return;
+          }
+
+          if (!parsed || typeof parsed !== "object") return;
+
+          try {
+            ingestMasterTelemetry(parsed, liveMasterId);
+          } catch (err) {
+            console.error("Dashboard telemetry update failed:", err);
+          }
+        });
+
+        mqttClient.on("reconnect", function () {
+          mqttConnected = false;
+          setMQTTStatus("Reconnecting...", "warning");
+        });
+        mqttClient.on("offline", function () {
+          mqttConnected = false;
+          setMQTTStatus("MQTT Offline", "danger");
+          renderActiveMasterView();
+        });
+        mqttClient.on("error", function () {
+          mqttConnected = false;
+          setMQTTStatus("MQTT Error", "danger");
+        });
+        mqttClient.on("close", function () {
+          mqttConnected = false;
+          subscribedTopics.clear();
+          setMQTTStatus("MQTT Disconnected", "danger");
+          renderActiveMasterView();
+        });
+      }
+
+      function ingestMasterTelemetry(data, mappedMasterId) {
+        if (!mappedMasterId || !masterTopicConfigs.has(mappedMasterId)) {
+          return;
+        }
+
+        const prev = masters.get(mappedMasterId) || { data: null, lastDataAt: 0, dataTs: 0, masterOffline: false };
+        const merged = Object.assign({}, prev.data || {}, data);
+        merged.masterId = mappedMasterId;
+
+        // Clear pumpFault if payload explicitly sends empty/null
+        if (Object.prototype.hasOwnProperty.call(data, "pumpFault") && !data.pumpFault) {
+          merged.pumpFault = "";
+        }
+
+        const dataTs = Number(data.ts) || 0;
+        const record = {
+          data: merged,
+          lastDataAt: Date.now(),
+          dataTs: dataTs,
+          masterOffline: false
+        };
+        masters.set(mappedMasterId, record);
+
+        // Reconcile any optimistic pending switch states against confirmed telemetry
+        reconcilePendingCommands(mappedMasterId, merged);
+
+        if (!selectedMasterId) {
+          selectedMasterId = mappedMasterId;
+        }
+
+        renderComboboxOptions();
+        if (mappedMasterId === selectedMasterId) {
+          renderActiveMasterView();
+        }
+      }
+
+      /* ======================================================================= */
+      /* OPTIMISTIC PENDING TRACKING & COMMAND DISPATCH                          */
+      /* ======================================================================= */
+      function setPendingCommand(key, targetState) {
+        pendingCommands.set(key, {
+          targetState: targetState,
+          expiresAt: Date.now() + PENDING_TTL_MS
+        });
+        window.setTimeout(function () {
+          const entry = pendingCommands.get(key);
+          if (entry && Date.now() >= entry.expiresAt) {
+            pendingCommands.delete(key);
+            renderActiveMasterView();
+          }
+        }, PENDING_TTL_MS + 50);
+      }
+
+      function getPendingCommand(key) {
+        const entry = pendingCommands.get(key);
+        if (!entry) return null;
+        if (Date.now() >= entry.expiresAt) {
+          pendingCommands.delete(key);
+          return null;
+        }
+        return entry.targetState;
+      }
+
+      function reconcilePendingCommands(masterId, data) {
+        const pumpKey = masterId + ":pump";
+        const pumpPending = pendingCommands.get(pumpKey);
+        if (pumpPending) {
+          const confirmedPump = normalizePump(pickField(data, ["pumpState", "pump_relay", "pump"]));
+          if (confirmedPump === pumpPending.targetState) {
+            pendingCommands.delete(pumpKey);
+          }
+        }
+        const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+        nodes.forEach(function (node) {
+          const rawNid = pickField(node, ["id", "nodeId"]);
+          const nid = (rawNid === undefined || rawNid === null) ? "" : String(rawNid);
+          if (!nid) return;
+          ["valve1", "valve2"].forEach(function (vKey) {
+            const pKey = masterId + ":" + nid + ":" + vKey;
+            const pending = pendingCommands.get(pKey);
+            if (pending && normalizeValve(node[vKey]) === pending.targetState) {
+              pendingCommands.delete(pKey);
+            }
+          });
+        });
+      }
+
+      function sendCommand(command, masterId) {
+        if (!mqttClient || !mqttClient.connected) {
+          showToast("MQTT is not connected. Wait for reconnection before sending commands.", "danger");
+          return false;
+        }
+        const targetMaster = String(masterId || selectedMasterId || "");
+        const cfg = masterTopicConfigs.get(targetMaster);
+        if (!cfg) {
+          showToast("Selected master node has no mapped command topic.", "danger");
+          return false;
+        }
+        mqttClient.publish(cfg.cmdTopic, JSON.stringify(command), { qos: 0, retain: false });
+        return true;
+      }
+
+      function requestPumpToggle(nextOn) {
+        if (!selectedMasterId) {
+          showToast("No active master node selected.", "danger");
+          return;
+        }
+        const record = masters.get(selectedMasterId);
+        const data = record ? record.data : {};
+        const rawPercent = pickField(data, ["waterLevelPercent", "tank_level_percent"]);
+        const lvlNum = Number(rawPercent);
+        const lvlLabel = (rawPercent === null || rawPercent === undefined || !Number.isFinite(lvlNum))
+          ? "unknown"
+          : lvlNum.toFixed(1) + " %";
+
+        if (nextOn) {
+          openConfirmDialog(
+            "Start Main Irrigation Pump?",
+            "Master " + selectedMasterId + " — Current tank water level is " + lvlLabel + ". Confirm starting the main pump.",
+            "Turn Pump ON",
+            "primary",
+            function () {
+              if (sendCommand({ pump: "on", masterId: selectedMasterId }, selectedMasterId)) {
+                setPendingCommand(selectedMasterId + ":pump", "ON");
+                renderActiveMasterView();
+                showToast("Start command sent to pump on " + selectedMasterId + ".", "success");
+              }
+            }
+          );
+        } else {
+          if (sendCommand({ pump: "off", masterId: selectedMasterId }, selectedMasterId)) {
+            setPendingCommand(selectedMasterId + ":pump", "OFF");
+            renderActiveMasterView();
+          }
+        }
+      }
+
+      function valveCommand(nodeId, action) {
+        const cleanNode = String(nodeId);
+        if (!NODE_ID_RE.test(cleanNode)) {
+          console.warn("Rejected unsafe node id:", cleanNode);
+          return;
+        }
+        if (!selectedMasterId) {
+          showToast("No active master node selected.", "danger");
+          return;
+        }
+
+        const dispatchValve = function () {
+          if (!sendCommand({ node: cleanNode, action: action, masterId: selectedMasterId }, selectedMasterId)) {
+            return;
+          }
+          if (action === "open1") setPendingCommand(selectedMasterId + ":" + cleanNode + ":valve1", "OPEN");
+          if (action === "close1") setPendingCommand(selectedMasterId + ":" + cleanNode + ":valve1", "CLOSED");
+          if (action === "open2") setPendingCommand(selectedMasterId + ":" + cleanNode + ":valve2", "OPEN");
+          if (action === "close2") setPendingCommand(selectedMasterId + ":" + cleanNode + ":valve2", "CLOSED");
+          if (action === "open") {
+            setPendingCommand(selectedMasterId + ":" + cleanNode + ":valve1", "OPEN");
+            setPendingCommand(selectedMasterId + ":" + cleanNode + ":valve2", "OPEN");
+          }
+          if (action === "close") {
+            setPendingCommand(selectedMasterId + ":" + cleanNode + ":valve1", "CLOSED");
+            setPendingCommand(selectedMasterId + ":" + cleanNode + ":valve2", "CLOSED");
+          }
+          renderActiveMasterView();
+        };
+
+        if (action === "open") {
+          openConfirmDialog(
+            "Open Both Valves?",
+            "Open BOTH Valve 1 and Valve 2 on Node " + cleanNode + " (Master " + selectedMasterId + ")?",
+            "Open Both",
+            "primary",
+            dispatchValve
+          );
+          return;
+        }
+        dispatchValve();
+      }
+
+      /* ======================================================================= */
+      /* MASTER NODE COMBOBOX STATE HANDLER                                      */
+      /* ======================================================================= */
+      function selectMaster(masterId) {
+        if (!masters.has(masterId)) return;
+        selectedMasterId = masterId;
+        closeCombobox();
+        renderComboboxOptions();
+        renderActiveMasterView();
+      }
+
+      function openCombobox() {
+        comboboxOpen = true;
+        comboboxHighlightIndex = -1;
+        document.getElementById("masterComboboxPopover").classList.add("open");
+        document.getElementById("masterComboboxTrigger").setAttribute("aria-expanded", "true");
+        const searchInput = document.getElementById("masterComboboxSearch");
+        searchInput.value = "";
+        renderComboboxOptions();
+        window.setTimeout(function () { searchInput.focus(); }, 10);
+      }
+
+      function closeCombobox() {
+        comboboxOpen = false;
+        comboboxHighlightIndex = -1;
+        document.getElementById("masterComboboxPopover").classList.remove("open");
+        document.getElementById("masterComboboxTrigger").setAttribute("aria-expanded", "false");
+      }
+
+      function renderComboboxOptions() {
+        const listEl = document.getElementById("masterComboboxList");
+        const triggerDot = document.getElementById("comboboxTriggerDot");
+        const triggerText = document.getElementById("comboboxTriggerText");
+        const countBadge = document.getElementById("comboboxMasterCount");
+        const searchQuery = (document.getElementById("masterComboboxSearch").value || "").trim().toLowerCase();
+
+        countBadge.textContent = String(masters.size);
+
+        if (selectedMasterId && masters.has(selectedMasterId)) {
+          const activeHealth = getMasterHealth(masters.get(selectedMasterId));
+          triggerDot.className = "status-dot " + activeHealth.dotClass;
+          triggerText.textContent = "Master: " + selectedMasterId;
+        } else {
+          triggerDot.className = "status-dot is-warn";
+          triggerText.textContent = masters.size ? "Select Master Node" : "Master: Waiting...";
+        }
+
+        clearChildren(listEl);
+
+        const entries = Array.from(masters.entries()).filter(function (entry) {
+          return entry[0].toLowerCase().indexOf(searchQuery) !== -1;
+        });
+
+        if (entries.length === 0) {
+          const empty = el("div", "combobox-empty", masters.size === 0 ? "Waiting for master node telemetry..." : "No matching master nodes.");
+          listEl.appendChild(empty);
+          return;
+        }
+
+        entries.forEach(function (entry, idx) {
+          const masterId = entry[0];
+          const record = entry[1];
+          const cfg = masterTopicConfigs.get(masterId);
+          const health = getMasterHealth(record);
+          const isSelected = masterId === selectedMasterId;
+          const nodesLen = Array.isArray(record.data && record.data.nodes) ? record.data.nodes.length : 0;
+
+          const option = el("button", "combobox-option" + (idx === comboboxHighlightIndex ? " is-highlighted" : ""));
+          option.type = "button";
+          option.setAttribute("role", "option");
+          option.setAttribute("aria-selected", isSelected ? "true" : "false");
+          option.dataset.masterId = masterId;
+
+          const left = el("span");
+          left.style.cssText = "display:flex; align-items:center; gap:8px; min-width:0;";
+          left.appendChild(el("span", "status-dot " + health.dotClass));
+          const titleWrap = el("span");
+          titleWrap.style.cssText = "display:flex; flex-direction:column; min-width:0;";
+          titleWrap.appendChild(el("span", null, masterId));
+          const topicSub = cfg ? cfg.liveTopic : "unmapped";
+          titleWrap.appendChild(el("span", null, health.shortLabel + " · " + nodesLen + " node" + (nodesLen === 1 ? "" : "s") + " · " + topicSub));
+          titleWrap.lastChild.style.cssText = "font-size:11px; color:var(--muted-foreground); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:210px;";
+          left.appendChild(titleWrap);
+
+          option.appendChild(left);
+          if (isSelected) {
+            const check = el("span", "badge badge-info", "Active");
+            option.appendChild(check);
+          }
+
+          option.addEventListener("click", function () {
+            selectMaster(masterId);
+          });
+          listEl.appendChild(option);
+        });
+      }
+
+      /* ======================================================================= */
+      /* REALISTIC ANIMATED WATER TANK VISUALIZATION RENDERER                    */
+      /* ======================================================================= */
+      function updateAnimatedWaterTank(rawPercent, sensorOk) {
+        const waterLevelEl = document.getElementById("tankWaterLevel");
+        const stateBadge = document.getElementById("tankLevelStateBadge");
+        const percentReadout = document.getElementById("tankVisualPercent");
+        const sensorBeam = document.getElementById("tankSensorBeam");
+
+        const num = Number(rawPercent);
+        const hasValid = rawPercent !== null && rawPercent !== undefined && rawPercent !== "" && Number.isFinite(num);
+        const clamped = hasValid ? Math.max(0, Math.min(100, num)) : 0;
+
+        // Water level always uses blue waves; keep wave crests inside cavity even at 100% fill
+        if (!hasValid || clamped <= 0) {
+          waterLevelEl.style.height = "0%";
+          waterLevelEl.style.bottom = "-22px";
+        } else {
+          const solidPct = Math.max(2, (clamped / 100) * 88);
+          waterLevelEl.style.bottom = "0px";
+          waterLevelEl.style.height = solidPct.toFixed(1) + "%";
+        }
+
+        // Adjust ultrasonic beam length to meet water surface
+        const translateY = 164 - (clamped / 100) * 164;
+        const surfaceY = Math.max(36, Math.min(196, 34 + translateY));
+        sensorBeam.setAttribute("y2", surfaceY.toFixed(1));
+        sensorBeam.setAttribute("stroke", sensorOk === false ? "#dc2626" : "#0284c7");
+
+        let badgeClass = "badge-info";
+        let badgeLabel = "Normal";
+
+        if (sensorOk === false) {
+          badgeClass = "badge-danger";
+          badgeLabel = "Sensor Fault";
+        } else if (!hasValid) {
+          badgeClass = "badge-neutral";
+          badgeLabel = "No Data";
+        } else if (clamped < 20) {
+          badgeClass = "badge-warning";
+          badgeLabel = "Low Level";
+        } else if (clamped > 80) {
+          badgeClass = "badge-success";
+          badgeLabel = "High Level";
+        }
+
+        stateBadge.className = "badge " + badgeClass;
+        stateBadge.textContent = badgeLabel;
+        percentReadout.textContent = fmt(rawPercent, 1) + " %";
+      }
+
+      /* ======================================================================= */
+      /* UNIFIED DASHBOARD RENDERER FOR SELECTED MASTER                          */
+      /* ======================================================================= */
+      function updateMasterConnectionDisplay() {
+        const record = selectedMasterId ? masters.get(selectedMasterId) : null;
+        const health = getMasterHealth(record);
+
+        const dot = document.getElementById("masterDot");
+        const label = document.getElementById("masterStatus");
+        const badge = document.getElementById("masterBadge");
+
+        dot.className = "status-dot " + health.dotClass;
+        label.textContent = health.label;
+        badge.className = "badge " + health.badgeClass;
+
+        const cfg = selectedMasterId ? masterTopicConfigs.get(selectedMasterId) : null;
+        document.getElementById("activeMasterLabel").textContent = selectedMasterId || "--";
+        document.getElementById("activeMasterTopicLabel").textContent = cfg ? cfg.liveTopic : "--";
+        document.getElementById("lastUpdatedLabel").textContent = record && record.lastDataAt
+          ? formatClockTime(record.lastDataAt)
+          : "Never";
+      }
+
+      function renderActiveMasterView() {
+        updateMasterConnectionDisplay();
+
+        const record = selectedMasterId ? masters.get(selectedMasterId) : null;
+        const data = record ? record.data : null;
+
+        if (!data) {
+          document.getElementById("waterDistance").textContent = "--";
+          document.getElementById("waterLevelCm").textContent = "--";
+          document.getElementById("tankHeight").textContent = "--";
+          document.getElementById("tankHeightCard").textContent = "--";
+          document.getElementById("masterFlow").textContent = "-- L/min";
+          document.getElementById("masterTotal").textContent = "--";
+          document.getElementById("nodesTotalFlow").textContent = "-- L/min";
+          document.getElementById("netTankFlow").textContent = "--";
+          updateTankFlowVisuals(null, null);
+          document.getElementById("nodeCount").textContent = "0";
+          document.getElementById("activeNodesOnlineBadge").textContent = "0 online";
+          document.getElementById("nodesScopeNote").textContent = "Waiting for an active master node";
+          document.getElementById("alarmBar").classList.remove("is-visible");
+          updatePumpUI("OFF", false);
+          updateAnimatedWaterTank(null, true);
+          renderCustomerNodes([]);
+          return;
+        }
+
+        const distance = pickField(data, ["waterDistance", "distance"]);
+        const levelCm = pickField(data, ["waterLevelCm", "waterLevelHeight", "tank_level_height"]);
+        const levelPercent = pickField(data, ["waterLevelPercent", "tank_level_percent"]);
+        const tankHeight = pickField(data, ["tankHeight", "tankHeightCm", "tank_height"]);
+        const masterFlow = pickField(data, ["masterFlow", "flow_rate", "flowRate"]);
+        const masterTotal = pickField(data, ["masterTotal", "volume_total", "total"]);
+        const rawPump = pickField(data, ["pumpState", "pump_relay", "pump"]);
+        const pumpState = normalizePump(rawPump);
+        const sensorOk = data.tankSensorOk !== false;
+        const fault = data.pumpFault ? String(data.pumpFault) : "";
+
+        document.getElementById("waterDistance").textContent = fmt(distance, 1);
+        document.getElementById("waterLevelCm").textContent = fmt(levelCm, 1);
+
+        const capStr = tankHeight !== undefined && tankHeight !== null && Number.isFinite(Number(tankHeight))
+          ? Number(tankHeight).toFixed(0) + " cm"
+          : "--";
+        document.getElementById("tankHeight").textContent = capStr;
+        document.getElementById("tankHeightCard").textContent = capStr;
+
+        document.getElementById("masterFlow").textContent = fmt(masterFlow, 2) + " L/min";
+        document.getElementById("masterTotal").textContent = fmt(masterTotal, 2);
+
+        // Fault / Sensor alarm banner
+        const alarmBar = document.getElementById("alarmBar");
+        const alarmText = document.getElementById("alarmText");
+        const alerts = [fault, !sensorOk ? "Tank sensor error: water level unknown" : ""].filter(Boolean);
+        if (alerts.length > 0) {
+          alarmText.textContent = alerts.join(" · ");
+          alarmBar.classList.add("is-visible");
+        } else {
+          alarmText.textContent = "";
+          alarmBar.classList.remove("is-visible");
+        }
+
+        // Pump UI & optimistic pending check
+        const pendingPump = selectedMasterId ? getPendingCommand(selectedMasterId + ":pump") : null;
+        updatePumpUI(pumpState, Boolean(pendingPump), pendingPump);
+
+        // Animated Tank SVG
+        updateAnimatedWaterTank(levelPercent, sensorOk);
+
+        // Customer Nodes scoped to active master + sum of node outflow rates
+        const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+        let nodesFlowSum = 0;
+        let hasNodeFlow = false;
+        nodes.forEach(function (n) {
+          if (!n || typeof n !== "object") return;
+          const rawNodeFlow = pickField(n, ["flow", "flow_rate", "flowRate"]);
+          const numNodeFlow = Number(rawNodeFlow);
+          if (rawNodeFlow !== undefined && rawNodeFlow !== null && rawNodeFlow !== "" && Number.isFinite(numNodeFlow)) {
+            nodesFlowSum += numNodeFlow;
+            hasNodeFlow = true;
+          }
+        });
+
+        const nodesFlowEl = document.getElementById("nodesTotalFlow");
+        if (nodes.length === 0) {
+          nodesFlowEl.textContent = "0.00 L/min";
+        } else {
+          nodesFlowEl.textContent = (hasNodeFlow ? nodesFlowSum.toFixed(2) : "--") + " L/min";
+        }
+
+        const masterFlowNum = Number(masterFlow);
+        const hasMasterFlow = masterFlow !== undefined && masterFlow !== null && masterFlow !== "" && Number.isFinite(masterFlowNum);
+        const effectiveOutflow = hasNodeFlow ? nodesFlowSum : (nodes.length === 0 ? 0 : NaN);
+        const netFlowEl = document.getElementById("netTankFlow");
+        if (hasMasterFlow && Number.isFinite(effectiveOutflow)) {
+          const netFlow = masterFlowNum - effectiveOutflow;
+          const netPrefix = netFlow > 0.005 ? "+" : "";
+          netFlowEl.textContent = netPrefix + netFlow.toFixed(2);
+        } else {
+          netFlowEl.textContent = "--";
+        }
+
+        updateTankFlowVisuals(
+          hasMasterFlow ? masterFlowNum : null,
+          Number.isFinite(effectiveOutflow) ? effectiveOutflow : null
+        );
+
+        const onlineCount = nodes.filter(function (n) {
+          return n && (n.online === true || n.online === 1 || String(n.online).toLowerCase() === "true");
+        }).length;
+
+        document.getElementById("nodeCount").textContent = String(nodes.length);
+        document.getElementById("activeNodesOnlineBadge").textContent = onlineCount + " online";
+        document.getElementById("activeNodesOnlineBadge").className = "badge tabular " + (onlineCount > 0 ? "badge-success" : "badge-neutral");
+        document.getElementById("nodesScopeNote").textContent = "Showing " + nodes.length + " node" + (nodes.length === 1 ? "" : "s") + " on Master " + selectedMasterId;
+
+        renderCustomerNodes(nodes);
+      }
+
+      function updateTankFlowVisuals(inFlowVal, outFlowVal) {
+        const hasIn = typeof inFlowVal === "number" && Number.isFinite(inFlowVal);
+        const hasOut = typeof outFlowVal === "number" && Number.isFinite(outFlowVal);
+        const isInActive = hasIn && inFlowVal > 0.01;
+        const isOutActive = hasOut && outFlowVal > 0.01;
+
+        const inletPort = document.getElementById("tankInletPort");
+        const outletPort = document.getElementById("tankOutletPort");
+        inletPort.setAttribute("class", "tank-port" + (isInActive ? " is-active-in" : ""));
+        outletPort.setAttribute("class", "tank-port" + (isOutActive ? " is-active-out" : ""));
+
+        const stripIn = document.getElementById("tankStripIn");
+        const stripOut = document.getElementById("tankStripOut");
+        stripIn.className = "flow-pill" + (isInActive ? " is-in" : "");
+        stripOut.className = "flow-pill" + (isOutActive ? " is-out" : "");
+        document.getElementById("tankInFlowVal").textContent = hasIn ? inFlowVal.toFixed(2) + " L/m" : "--";
+        document.getElementById("tankOutFlowVal").textContent = hasOut ? outFlowVal.toFixed(2) + " L/m" : "--";
+
+        const inflowBadge = document.getElementById("inflowBadge");
+        const inflowBadgeText = document.getElementById("inflowBadgeText");
+        inflowBadge.className = "badge flow-badge-icon " + (isInActive ? "badge-info" : "badge-neutral");
+        inflowBadgeText.textContent = isInActive ? "Inflow · Active" : "Inflow · Idle";
+
+        const outflowBadge = document.getElementById("outflowBadge");
+        const outflowBadgeText = document.getElementById("outflowBadgeText");
+        outflowBadge.className = "badge flow-badge-icon " + (isOutActive ? "badge-warning" : "badge-neutral");
+        outflowBadgeText.textContent = isOutActive ? "Outflow · Active" : "Outflow · Idle";
+
+        const netBadge = document.getElementById("tankStripNetBadge");
+        if (!hasIn && !hasOut) {
+          netBadge.className = "badge badge-neutral";
+          netBadge.textContent = "No Data";
+        } else if (!isInActive && !isOutActive) {
+          netBadge.className = "badge badge-neutral";
+          netBadge.textContent = "Idle";
+        } else if (hasIn && hasOut) {
+          const net = inFlowVal - outFlowVal;
+          if (net > 0.05) {
+            netBadge.className = "badge badge-success";
+            netBadge.textContent = "↑ Filling";
+          } else if (net < -0.05) {
+            netBadge.className = "badge badge-warning";
+            netBadge.textContent = "↓ Draining";
+          } else {
+            netBadge.className = "badge badge-info";
+            netBadge.textContent = "⇄ Balanced";
+          }
+        } else if (isInActive) {
+          netBadge.className = "badge badge-success";
+          netBadge.textContent = "↑ Filling";
+        } else {
+          netBadge.className = "badge badge-warning";
+          netBadge.textContent = "↓ Draining";
+        }
+      }
+
+      function updatePumpUI(pumpState, isPending, pendingTarget) {
+        const sw = document.getElementById("pumpSwitch");
+        const badge = document.getElementById("pumpStatusBadge");
+        const headline = document.getElementById("pumpHeadline");
+        const feedback = document.getElementById("pumpFeedbackText");
+        const stateText = document.getElementById("pumpSwitchStateText");
+
+        const isOn = pumpState === "ON";
+        sw.setAttribute("aria-checked", isOn ? "true" : "false");
+        sw.disabled = !selectedMasterId;
+
+        if (isPending) {
+          sw.setAttribute("aria-busy", "true");
+          badge.className = "badge badge-info";
+          badge.textContent = "PENDING (" + pendingTarget + ")";
+          headline.textContent = "Switching...";
+          feedback.textContent = "Awaiting confirmation from master";
+          stateText.textContent = "...";
+          stateText.className = "switch-state-text";
+        } else {
+          sw.removeAttribute("aria-busy");
+          badge.className = "badge " + (isOn ? "badge-success" : "badge-danger");
+          badge.textContent = isOn ? "ON" : "OFF";
+          headline.textContent = isOn ? "Running" : "Standby";
+          feedback.textContent = "Manual switch control";
+          stateText.textContent = isOn ? "ON" : "OFF";
+          stateText.className = "switch-state-text" + (isOn ? " is-on" : "");
+        }
+      }
+
+      function createTelemetryCell(label, value) {
+        const cell = el("div", "telemetry-cell");
+        cell.appendChild(el("span", "telemetry-label", label));
+        cell.appendChild(el("span", "telemetry-val", value));
+        return cell;
+      }
+
+      function createValveRow(title, state, nodeId, openAct, closeAct, pendingState) {
+        const row = el("div", "valve-row");
+        const info = el("div", "valve-info");
+        info.appendChild(el("span", "valve-name", title));
+
+        const effectiveState = pendingState ? "PENDING" : state;
+        const badgeCls =
+          effectiveState === "OPEN" ? "badge-success" :
+          effectiveState === "CLOSED" ? "badge-danger" :
+          effectiveState === "PENDING" ? "badge-info" : "badge-warning";
+
+        info.appendChild(el("span", "badge " + badgeCls, effectiveState));
+        row.appendChild(info);
+
+        const wrap = el("div", "switch-wrap");
+        const isOpen = state === "OPEN";
+        const stateLabel = el("span", "switch-state-text" + (isOpen && !pendingState ? " is-on" : ""), pendingState ? "..." : (isOpen ? "ON" : "OFF"));
+
+        const sw = el("button", "switch");
+        sw.type = "button";
+        sw.setAttribute("role", "switch");
+        sw.setAttribute("aria-checked", isOpen ? "true" : "false");
+        sw.setAttribute("aria-label", title + " on Node " + nodeId);
+        if (pendingState) sw.setAttribute("aria-busy", "true");
+        sw.dataset.valveSwitch = "1";
+        sw.dataset.node = nodeId;
+        sw.dataset.action = isOpen ? closeAct : openAct;
+
+        sw.appendChild(el("span", "switch-thumb"));
+        wrap.appendChild(stateLabel);
+        wrap.appendChild(sw);
+        row.appendChild(wrap);
+        return row;
+      }
+
+      function renderCustomerNodes(nodes) {
+        const container = document.getElementById("nodesContainer");
+        clearChildren(container);
+
+        if (!nodes || nodes.length === 0) {
+          const empty = el("div", "empty-state");
+          empty.appendChild(el("h3", null, selectedMasterId ? "No Customer Nodes on " + selectedMasterId : "Waiting for Master Telemetry"));
+          empty.appendChild(el("p", null, selectedMasterId
+            ? "No LoRa customer nodes have reported for this master yet."
+            : "Connect to MQTT and wait for a master controller to publish live telemetry."));
+          container.appendChild(empty);
+          return;
+        }
+
+        const q = nodeSearchQuery.trim().toLowerCase();
+        const filtered = nodes.filter(function (node) {
+          const id = String(pickField(node, ["id", "nodeId"]) || "--");
+          const isOnline = node.online === true || node.online === 1 || String(node.online).toLowerCase() === "true";
+          if (q && id.toLowerCase().indexOf(q) === -1) return false;
+          if (nodeStatusFilter === "online" && !isOnline) return false;
+          if (nodeStatusFilter === "offline" && isOnline) return false;
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          const emptyFilter = el("div", "empty-state");
+          emptyFilter.appendChild(el("h3", null, "No Matching Nodes"));
+          emptyFilter.appendChild(el("p", null, "Try clearing the search query or switching the online status filter."));
+          container.appendChild(emptyFilter);
+          return;
+        }
+
+        filtered.forEach(function (node) {
+          const id = String(pickField(node, ["id", "nodeId"]) ?? "--");
+          const idOk = NODE_ID_RE.test(id);
+          const online = node.online === true || node.online === 1 || String(node.online).toLowerCase() === "true";
+
+          const valve1 = normalizeValve(node.valve1);
+          const valve2 = normalizeValve(node.valve2);
+          const pending1 = selectedMasterId ? getPendingCommand(selectedMasterId + ":" + id + ":valve1") : null;
+          const pending2 = selectedMasterId ? getPendingCommand(selectedMasterId + ":" + id + ":valve2") : null;
+
+          const card = el("article", "card node-card");
+
+          const header = el("div", "node-card-header");
+          const titleBox = el("div");
+          titleBox.appendChild(el("h3", "node-title", "Node " + id));
+          titleBox.appendChild(el("div", "node-meta", "Master: " + (selectedMasterId || "--")));
+          header.appendChild(titleBox);
+
+          const statusBadge = el("span", "badge " + (online ? "badge-success" : "badge-danger"), online ? "ONLINE" : "OFFLINE");
+          header.appendChild(statusBadge);
+          card.appendChild(header);
+
+          // Structured tabular telemetry grid
+          const grid = el("div", "telemetry-table");
+          grid.appendChild(createTelemetryCell("Flow Rate", fmt(pickField(node, ["flow", "flow_rate"]), 2) + " L/min"));
+          grid.appendChild(createTelemetryCell("Total Water", fmt(pickField(node, ["total", "volume_total"]), 2) + " L"));
+          grid.appendChild(createTelemetryCell("Soil Moisture 1", fmt(pickField(node, ["m1", "moisture1", "soil_moisture_1"]), 0) + " %"));
+          grid.appendChild(createTelemetryCell("Soil Moisture 2", fmt(pickField(node, ["m2", "moisture2", "soil_moisture_2"]), 0) + " %"));
+          grid.appendChild(createTelemetryCell("Temperature", fmt(pickField(node, ["temp", "temperature"]), 1) + " °C"));
+          grid.appendChild(createTelemetryCell("Humidity", fmt(pickField(node, ["hum", "humidity"]), 1) + " %"));
+          grid.appendChild(createTelemetryCell("LoRa RSSI", fmt(node.rssi, 0) + " dBm"));
+          grid.appendChild(createTelemetryCell("Node Identifier", id));
+          card.appendChild(grid);
+
+          if (idOk) {
+            const valvePanel = el("div", "valve-panel");
+            valvePanel.appendChild(el("div", "valve-panel-title", "Zone Valve Control"));
+            valvePanel.appendChild(createValveRow("Valve 1", valve1, id, "open1", "close1", pending1));
+            valvePanel.appendChild(createValveRow("Valve 2", valve2, id, "open2", "close2", pending2));
+
+            const bulkRow = el("div", "valve-actions-row");
+            const openBothBtn = el("button", "btn btn-primary btn-sm", "Open Both");
+            openBothBtn.type = "button";
+            openBothBtn.dataset.node = id;
+            openBothBtn.dataset.action = "open";
+
+            const closeBothBtn = el("button", "btn btn-outline btn-sm", "Close Both");
+            closeBothBtn.type = "button";
+            closeBothBtn.dataset.node = id;
+            closeBothBtn.dataset.action = "close";
+
+            bulkRow.appendChild(openBothBtn);
+            bulkRow.appendChild(closeBothBtn);
+            valvePanel.appendChild(bulkRow);
+            card.appendChild(valvePanel);
+          } else {
+            const warnNote = el("div", "badge badge-warning", "Controls disabled: invalid node ID format");
+            card.appendChild(warnNote);
+          }
+
+          container.appendChild(card);
+        });
+      }
+
+      /* ======================================================================= */
+      /* EVENT WIRING & INITIALIZATION                                           */
+      /* ======================================================================= */
+      function initEventHandlers() {
+        document.getElementById("loginForm").addEventListener("submit", handleLoginSubmit);
+
+        document.getElementById("togglePasswordBtn").addEventListener("click", function () {
+          const pw = document.getElementById("password");
+          const showing = pw.type === "text";
+          pw.type = showing ? "password" : "text";
+          this.setAttribute("aria-pressed", showing ? "false" : "true");
+          this.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+        });
+
+        document.getElementById("logoutBtn").addEventListener("click", logout);
+        document.getElementById("themeToggleBtn").addEventListener("click", function () {
+          const next = document.documentElement.classList.contains("dark") ? "light" : "dark";
+          applyTheme(next);
+        });
+
+        document.querySelectorAll(".nav-link[data-page]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            showPage(btn.dataset.page);
+          });
+        });
+
+        // Main pump tactile switch
+        document.getElementById("pumpSwitch").addEventListener("click", function () {
+          const isChecked = this.getAttribute("aria-checked") === "true";
+          requestPumpToggle(!isChecked);
+        });
+
+        // Delegated click handler for valve switches and bulk buttons (no inline onclick)
+        document.getElementById("nodesContainer").addEventListener("click", function (ev) {
+          const target = ev.target.closest ? ev.target.closest("[data-action][data-node]") : null;
+          if (!target) return;
+          valveCommand(target.dataset.node, target.dataset.action);
+        });
+
+        // Search & filter customer nodes
+        document.getElementById("nodeSearchInput").addEventListener("input", function (ev) {
+          nodeSearchQuery = ev.target.value || "";
+          renderActiveMasterView();
+        });
+
+        document.querySelectorAll("[data-node-filter]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            nodeStatusFilter = btn.dataset.nodeFilter;
+            document.querySelectorAll("[data-node-filter]").forEach(function (b) {
+              b.classList.toggle("is-active", b === btn);
+            });
+            renderActiveMasterView();
+          });
+        });
+
+        // Master Node Combobox trigger, search, keyboard navigation, and outside click
+        const combobox = document.getElementById("masterCombobox");
+        const trigger = document.getElementById("masterComboboxTrigger");
+        const searchInput = document.getElementById("masterComboboxSearch");
+
+        trigger.addEventListener("click", function () {
+          if (comboboxOpen) closeCombobox();
+          else openCombobox();
+        });
+
+        searchInput.addEventListener("input", function () {
+          comboboxHighlightIndex = -1;
+          renderComboboxOptions();
+        });
+
+        searchInput.addEventListener("keydown", function (ev) {
+          const options = Array.from(document.querySelectorAll("#masterComboboxList .combobox-option"));
+          if (ev.key === "Escape") {
+            ev.preventDefault();
+            closeCombobox();
+            trigger.focus();
+          } else if (ev.key === "ArrowDown") {
+            ev.preventDefault();
+            if (options.length) {
+              comboboxHighlightIndex = (comboboxHighlightIndex + 1) % options.length;
+              renderComboboxOptions();
+              const activeOpt = document.querySelector("#masterComboboxList .combobox-option.is-highlighted");
+              if (activeOpt && activeOpt.scrollIntoView) activeOpt.scrollIntoView({ block: "nearest" });
+            }
+          } else if (ev.key === "ArrowUp") {
+            ev.preventDefault();
+            if (options.length) {
+              comboboxHighlightIndex = (comboboxHighlightIndex - 1 + options.length) % options.length;
+              renderComboboxOptions();
+              const activeOpt = document.querySelector("#masterComboboxList .combobox-option.is-highlighted");
+              if (activeOpt && activeOpt.scrollIntoView) activeOpt.scrollIntoView({ block: "nearest" });
+            }
+          } else if (ev.key === "Enter") {
+            ev.preventDefault();
+            if (comboboxHighlightIndex >= 0 && options[comboboxHighlightIndex]) {
+              selectMaster(options[comboboxHighlightIndex].dataset.masterId);
+              trigger.focus();
+            } else if (options.length === 1) {
+              selectMaster(options[0].dataset.masterId);
+              trigger.focus();
+            }
+          }
+        });
+
+        document.addEventListener("click", function (ev) {
+          if (comboboxOpen && !combobox.contains(ev.target)) {
+            closeCombobox();
+          }
+        });
+
+        // Confirmation dialog controls
+        document.getElementById("confirmDialogCancel").addEventListener("click", closeConfirmDialog);
+        document.getElementById("confirmDialogConfirm").addEventListener("click", function () {
+          const cb = pendingConfirmCallback;
+          closeConfirmDialog();
+          if (typeof cb === "function") cb();
+        });
+        document.getElementById("confirmDialogBackdrop").addEventListener("click", function (ev) {
+          if (ev.target === this) closeConfirmDialog();
+        });
+        document.addEventListener("keydown", function (ev) {
+          if (ev.key === "Escape") {
+            if (document.getElementById("confirmDialogBackdrop").classList.contains("open")) {
+              closeConfirmDialog();
+            } else if (document.getElementById("topicsDialogBackdrop").classList.contains("open")) {
+              closeTopicsDialog();
+            }
+          }
+        });
+
+        // 1:1 Master-Topic Manager modal triggers and form handlers
+        document.getElementById("manageTopicsBtn").addEventListener("click", openTopicsDialog);
+        document.getElementById("comboboxManageTopicsBtn").addEventListener("click", function () {
+          closeCombobox();
+          openTopicsDialog();
+        });
+        document.getElementById("topicsDialogCloseBtn").addEventListener("click", closeTopicsDialog);
+        document.getElementById("topicsDialogBackdrop").addEventListener("click", function (ev) {
+          if (ev.target === this) closeTopicsDialog();
+        });
+        document.getElementById("mapCancelEditBtn").addEventListener("click", resetMappingForm);
+        document.getElementById("mapResetDefaultsBtn").addEventListener("click", function () {
+          resetDefaultTopicMappings();
+          resetMappingForm();
+          showToast("Restored default 1:1 master topic mappings.", "success");
+        });
+        document.getElementById("mappingForm").addEventListener("submit", function (ev) {
+          ev.preventDefault();
+          const errEl = document.getElementById("mapFormError");
+          const res = upsertMasterTopicMapping(
+            document.getElementById("mapMasterIdInput").value,
+            document.getElementById("mapLiveTopicInput").value,
+            document.getElementById("mapCmdTopicInput").value,
+            document.getElementById("mapStatusTopicInput").value,
+            editingMasterId
+          );
+          if (!res.ok) {
+            errEl.textContent = res.error;
+            errEl.style.display = "block";
+            return;
+          }
+          errEl.style.display = "none";
+          resetMappingForm();
+          showToast("Saved 1:1 master topic mapping.", "success");
+        });
+
+        // 1-second periodic refresh for master staleness & combobox status badges
+        window.setInterval(function () {
+          if (document.getElementById("mainApp").style.display === "none") return;
+          updateMasterConnectionDisplay();
+          if (!comboboxOpen) {
+            const triggerDot = document.getElementById("comboboxTriggerDot");
+            if (selectedMasterId && masters.has(selectedMasterId)) {
+              triggerDot.className = "status-dot " + getMasterHealth(masters.get(selectedMasterId)).dotClass;
+            }
+          } else {
+            renderComboboxOptions();
+          }
+        }, 1000);
+      }
+
+      /* ======================================================================= */
+      /* 1:1 MASTER TOPIC MANAGER DIALOG HANDLERS                                */
+      /* ======================================================================= */
+      function resetMappingForm() {
+        editingMasterId = null;
+        document.getElementById("mapMasterIdInput").value = "";
+        document.getElementById("mapLiveTopicInput").value = "";
+        document.getElementById("mapCmdTopicInput").value = "";
+        document.getElementById("mapStatusTopicInput").value = "";
+        document.getElementById("mapFormError").style.display = "none";
+        document.getElementById("mapCancelEditBtn").style.display = "none";
+        document.getElementById("mapSubmitBtn").textContent = "Save 1:1 Mapping";
+      }
+
+      function openTopicsDialog() {
+        resetMappingForm();
+        renderMappingList();
+        document.getElementById("topicsDialogBackdrop").classList.add("open");
+        document.getElementById("mapMasterIdInput").focus();
+      }
+
+      function closeTopicsDialog() {
+        document.getElementById("topicsDialogBackdrop").classList.remove("open");
+        resetMappingForm();
+      }
+
+      function renderMappingList() {
+        const listEl = document.getElementById("mappingList");
+        clearChildren(listEl);
+
+        if (masterTopicConfigs.size === 0) {
+          const empty = el("div", "empty-state");
+          empty.style.padding = "24px 16px";
+          empty.appendChild(el("h3", null, "No Master Topics Configured"));
+          empty.appendChild(el("p", null, "Add a Master ID and its dedicated MQTT live topic above."));
+          listEl.appendChild(empty);
+          return;
+        }
+
+        masterTopicConfigs.forEach(function (cfg, masterId) {
+          const health = getMasterHealth(masters.get(masterId));
+          const isActive = masterId === selectedMasterId;
+          const row = el("div", "mapping-row" + (isActive ? " is-active" : ""));
+
+          const meta = el("div", "mapping-meta");
+          const idLine = el("div", "mapping-id-line");
+          idLine.appendChild(el("span", "status-dot " + health.dotClass));
+          idLine.appendChild(el("span", null, masterId));
+          idLine.appendChild(el("span", "badge " + health.badgeClass, health.shortLabel));
+          if (isActive) {
+            idLine.appendChild(el("span", "badge badge-info", "Active"));
+          }
+          meta.appendChild(idLine);
+
+          const topicsLine = el("div", "mapping-topics-line");
+          topicsLine.textContent = "Live: " + cfg.liveTopic + "  |  Cmd: " + cfg.cmdTopic + "  |  Status: " + cfg.statusTopic;
+          meta.appendChild(topicsLine);
+          row.appendChild(meta);
+
+          const actions = el("div", "mapping-row-actions");
+          if (!isActive) {
+            const selectBtn = el("button", "btn btn-secondary btn-sm", "Select");
+            selectBtn.type = "button";
+            selectBtn.addEventListener("click", function () {
+              selectMaster(masterId);
+              renderMappingList();
+            });
+            actions.appendChild(selectBtn);
+          }
+
+          const editBtn = el("button", "btn btn-outline btn-sm", "Edit");
+          editBtn.type = "button";
+          editBtn.addEventListener("click", function () {
+            editingMasterId = masterId;
+            document.getElementById("mapMasterIdInput").value = cfg.masterId;
+            document.getElementById("mapLiveTopicInput").value = cfg.liveTopic;
+            document.getElementById("mapCmdTopicInput").value = cfg.cmdTopic;
+            document.getElementById("mapStatusTopicInput").value = cfg.statusTopic;
+            document.getElementById("mapFormError").style.display = "none";
+            document.getElementById("mapCancelEditBtn").style.display = "inline-flex";
+            document.getElementById("mapSubmitBtn").textContent = "Update Mapping";
+            document.getElementById("mapLiveTopicInput").focus();
+          });
+          actions.appendChild(editBtn);
+
+          const delBtn = el("button", "btn btn-ghost btn-sm", "Remove");
+          delBtn.type = "button";
+          delBtn.style.color = "var(--danger-fg)";
+          delBtn.addEventListener("click", function () {
+            removeMasterTopicMapping(masterId);
+            if (editingMasterId === masterId) resetMappingForm();
+          });
+          actions.appendChild(delBtn);
+
+          row.appendChild(actions);
+          listEl.appendChild(row);
+        });
+      }
+
+      window.addEventListener("DOMContentLoaded", function () {
+        initTheme();
+        initMasterTopicMappings();
+        initEventHandlers();
+        renderComboboxOptions();
+        renderActiveMasterView();
+      });
+    })();
+  </script>
 </body>
 </html>
